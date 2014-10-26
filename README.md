@@ -1,4 +1,4 @@
 SimpleSpider
 ============
 
-A simple spider for homework.It only fetch html files and analysis html to get htmlfile.
+A simple spider for homework.It only fetch html files and analysis html to get htmlfile.I write code with wangcun.
