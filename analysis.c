@@ -40,9 +40,9 @@ int analy(char *url,char* html,char **output){
 			break;
 		case STATUS_2:
 			while(1){
-				if(html[i]=='h' && html[i+1]=='r' && html[i+2] =='e' &&html=='f'){
+				if(!strncmp(html+i,"href",LEN_HREF)){	//href
 					status = STATUS_3;
-					i += 4;
+					i += LEN_HREF;
 					break;	//break while(1)
 				}else if(html[i] == '>'){
 					i++;
@@ -75,13 +75,35 @@ int analy(char *url,char* html,char **output){
 			while(html[i]==' ') i++;
 			if(html[i]=='#'||html[i]=='>'||html[i]=='"'){
 				status = STATUS_0;
+				i++;
+			}else if(!strncmp(html+i,"javascript",LEN_JAVASCRIPT)){
+				status = STATUS_0;
 			}else{
 				pos=0;
-				temp[++pos]=html[i];
+				temp[pos++]=html[i++];
+				status = STATUS_6;
 			}
+			break;
+		case STATUS_6:
+			while(html[i]==' ') i++;
+			while(1){
+				if(html[i]=='#'||html[i]=='>'){
+					status = STATUS_0;
+					i++;
+				}else if(html[i]=='"'){
+					status = STATUS_7;
+					break;
+				}else{
+					temp[pos++] = html[i++];
+				}
+			}
+			break;
+		case STATUS_7:
+				temp[pos]=0;
+				printf("%s\n",temp);
+				status = STATUS_0;
 			break;
 		}
 	}	
-	
 }
 

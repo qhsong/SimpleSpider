@@ -29,6 +29,9 @@
 #define STATUS_6 6
 #define STATUS_7 7
 
+#define LEN_HREF 4
+#define LEN_JAVASCRIPT 10 
+
 int analy(char *url,char *html,char **output);
 
 
