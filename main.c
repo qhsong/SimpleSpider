@@ -2,7 +2,7 @@
 #include "analysis.h"
 
 int main(){
-	FILE *in = fopen("techqq2w/index.html","r");
+	FILE *in = fopen("index.html","r");
 	char temp[1024000];
 	char **a;
 	int count;

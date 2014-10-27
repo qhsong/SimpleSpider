@@ -18,6 +18,8 @@
 #ifndef ANALYSIS_H
 #define ANALYSIS_H
 
+#define GLOBAL_BASE_URL "tech.qq.com"
+
 #include<string.h>
 
 #define STATUS_0 0
@@ -32,7 +34,8 @@
 #define LEN_HREF 4
 #define LEN_JAVASCRIPT 10 
 
-int analy(char *url,char *html,char **output);
+int analy(const char *url,const char *html,char **output);
+int trans(const char *baseurl,const char *url,char *out);
 
 
 #endif

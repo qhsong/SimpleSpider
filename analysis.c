@@ -17,7 +17,7 @@
  */
 #include "analysis.h"
 
-int analy(char *url,char* html,char **output){
+int analy(const char *url,const char* html,char **output){
 	int status = STATUS_0;
 	int i = 0,j = 0;
 	char temp[100];
@@ -26,7 +26,8 @@ int analy(char *url,char* html,char **output){
 		switch(status) {
 		case STATUS_0:
 			j = i;
-			while(html[j]!='<') j++;
+			while(html[j]!='<' && html[j]!='\0') j++;
+			if(html[j]=='\0') return 0;
 			i = j+1;
 			status = STATUS_1;
 			break;
@@ -107,3 +108,6 @@ int analy(char *url,char* html,char **output){
 	}	
 }
 
+int trans(const char *baseurl,const char *url,char *out) {
+	
+}
