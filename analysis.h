@@ -24,6 +24,8 @@
 #include<string.h>
 #include<malloc.h>
 
+#include "trie.h"
+
 #define STATUS_0 0
 #define STATUS_1 1
 #define STATUS_2 2
@@ -37,8 +39,8 @@
 #define LEN_JAVASCRIPT 10 
 #define LEN_HTTPFLAG 7
 
-int analy(char *url,const char *html,char **output);
+int analy(char *url,const char *html,char **output,TRIE **head);
 char* trans(char *baseurl,char *url);
-
+int sendurl(char *url);
 
 #endif

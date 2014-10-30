@@ -17,7 +17,8 @@
  */
 #include "analysis.h"
 
-int analy(char *url,const char* html,char **output){
+int analy(char *url,const char* html,char **output,TRIE **head){
+	char *outurl;
 	int status = STATUS_0;
 	int i = 0,j = 0;
 	char temp[100];
@@ -101,8 +102,15 @@ int analy(char *url,const char* html,char **output){
 			break;
 		case STATUS_7:
 				temp[pos]=0;
-				printf("%s\n",temp);
-				trans("http://127.0.0.1/c/a/h.html","../../../b/e.html");
+				//printf("%s\n",temp);
+				outurl = trans(url,temp);
+				if(outurl) { 
+					if(!trie_check(head,outurl)){
+						sendurl(outurl);
+						printf("URL:%s\n",outurl);
+						trie_add(head,outurl);
+					}
+				}
 				status = STATUS_0;
 			break;
 		}
@@ -114,7 +122,7 @@ char* trans(char *baseurl,char *url) {
 	if(!strncmp(str,"http://",LEN_HTTPFLAG)){
 		str += LEN_HTTPFLAG;
 		if(!strncmp(str,GLOBAL_BASE_URL,LEN_GLOBAL_BASE_URL)){
-			index = out = (char *)malloc(100);
+			index = out = (char *)malloc(1024);
 			strcat(out,"http://");
 			index += LEN_HTTPFLAG;
 			burl += LEN_HTTPFLAG;
@@ -123,11 +131,12 @@ char* trans(char *baseurl,char *url) {
 			while(*index++=*str++);
 			*index = '\0';
 		}else{
-			out = NULL;
+			//printf("Out side address:%s\n",url);
+			return NULL;
 		}
 	}else if(!strncmp(str,"..",2)){
 		char *end = burl;
-		index = out = (char *)malloc(100);
+		index = out = (char *)malloc(1024);
 		while(*end++);
 		while(*(--end)!='/');
 		while(*str=='.'&&str[1]=='.'&& end != burl){
@@ -135,6 +144,7 @@ char* trans(char *baseurl,char *url) {
 			str += 3;	//"../"length
 		}
 		if(end == (burl+6)) {	// http:/(/) if end point (/) then exit it.
+			printf("Relative address error!%s",url);
 			return NULL;	//address error
 		}else{
 			while(burl!=end){
@@ -148,9 +158,24 @@ char* trans(char *baseurl,char *url) {
 				index++;
 			}
 		}
+	}else if(*str=='/'){
+		index = out = (char *)malloc(1024);
+		strcpy(out,"http://");
+		burl += LEN_HTTPFLAG;
+		index += LEN_HTTPFLAG;
+		while(*burl != '/'){
+			*index = *burl;
+			index++;
+			burl++;
+		}
+		while(*str){
+			*index = *str;
+			str++;
+			index++;
+		}
 	}else{
 		char *end = burl;
-		index = out = (char *)malloc(100);
+		index = out = (char *)malloc(1024);
 		while(*end++);
 		while(*(--end)!='/');
 		end++;
@@ -159,4 +184,9 @@ char* trans(char *baseurl,char *url) {
 		}
 		while(*index++ = *str++);
 	}
+	return out;
+}
+
+int sendurl(char *url){
+
 }
