@@ -19,6 +19,7 @@
 #define ANALYSIS_H
 
 #define GLOBAL_BASE_URL "tech.qq.com"
+#define LEN_GLOBAL_BASE_URL 11
 
 #include<string.h>
 
@@ -33,9 +34,10 @@
 
 #define LEN_HREF 4
 #define LEN_JAVASCRIPT 10 
+#define LEN_HTTPFLAG 7
 
 int analy(const char *url,const char *html,char **output);
-int trans(const char *baseurl,const char *url,char *out);
+char* trans(const char *baseurl,const char *url);
 
 
 #endif

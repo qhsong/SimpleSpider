@@ -2,7 +2,7 @@
 #include "analysis.h"
 
 int main(){
-	FILE *in = fopen("index.html","r");
+	FILE *in = fopen("video.htm","r");
 	char temp[1024000];
 	char **a;
 	int count;

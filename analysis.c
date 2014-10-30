@@ -108,6 +108,37 @@ int analy(const char *url,const char* html,char **output){
 	}	
 }
 
-int trans(const char *baseurl,const char *url,char *out) {
-	
+char* trans(const char *baseurl,const char *url) {
+	char *out = NULL,*str = url;
+	if(!strncmp(str,"http://",LEN_HTTPFLAG)){
+		str += LEN_HTTPFLAG;
+		if(!strncmp(str,GLOBAL_BASE_URL,LEN_GLOBAL_BASE_URL)){
+			out = malloc(100);
+			strcat(out,"http://");
+			baseurl += LEN_HTTPFLAG;
+			while((*out++=*baseurl++)!='/');
+			while(*str++='/');
+			*out = '/';
+			while(*out++=*str++);
+		}
+	}else if(!strncmp(str,"..",2)){
+		char *end = baseurl;
+		while(*end++);
+		while(*str!='.' && end != baseurl){
+			while((*end--)!='/');
+			str += 3;	//../length
+		}
+		if(end == baseurl) {
+			return NULL;	//address error
+		}else{
+			while(baseurl!=end){
+				*out = *baseurl;
+				baseurl++;
+			}
+			while(*str){
+				*out = *str;
+				str++;
+			}
+		}
+	}
 }
