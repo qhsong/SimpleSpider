@@ -17,7 +17,7 @@
  */
 #include "analysis.h"
 
-int analy(const char *url,const char* html,char **output){
+int analy(char *url,const char* html,char **output){
 	int status = STATUS_0;
 	int i = 0,j = 0;
 	char temp[100];
@@ -102,43 +102,61 @@ int analy(const char *url,const char* html,char **output){
 		case STATUS_7:
 				temp[pos]=0;
 				printf("%s\n",temp);
+				trans("http://127.0.0.1/c/a/h.html","../../../b/e.html");
 				status = STATUS_0;
 			break;
 		}
 	}	
 }
 
-char* trans(const char *baseurl,const char *url) {
-	char *out = NULL,*str = url;
+char* trans(char *baseurl,char *url) {
+	char *out = NULL,*str = url,*burl = baseurl,*index;
 	if(!strncmp(str,"http://",LEN_HTTPFLAG)){
 		str += LEN_HTTPFLAG;
 		if(!strncmp(str,GLOBAL_BASE_URL,LEN_GLOBAL_BASE_URL)){
-			out = malloc(100);
+			index = out = (char *)malloc(100);
 			strcat(out,"http://");
-			baseurl += LEN_HTTPFLAG;
-			while((*out++=*baseurl++)!='/');
-			while(*str++='/');
-			*out = '/';
-			while(*out++=*str++);
+			index += LEN_HTTPFLAG;
+			burl += LEN_HTTPFLAG;
+			while((*index++=*burl++)!='/');
+			while(*str++!='/');
+			while(*index++=*str++);
+			*index = '\0';
+		}else{
+			out = NULL;
 		}
 	}else if(!strncmp(str,"..",2)){
-		char *end = baseurl;
+		char *end = burl;
+		index = out = (char *)malloc(100);
 		while(*end++);
-		while(*str!='.' && end != baseurl){
-			while((*end--)!='/');
-			str += 3;	//../length
+		while(*(--end)!='/');
+		while(*str=='.'&&str[1]=='.'&& end != burl){
+			while((*--end)!='/');
+			str += 3;	//"../"length
 		}
-		if(end == baseurl) {
+		if(end == (burl+6)) {	// http:/(/) if end point (/) then exit it.
 			return NULL;	//address error
 		}else{
-			while(baseurl!=end){
-				*out = *baseurl;
-				baseurl++;
+			while(burl!=end){
+				*index = *burl;
+				burl++;
+				index++;
 			}
 			while(*str){
-				*out = *str;
+				*index = *str;
 				str++;
+				index++;
 			}
 		}
+	}else{
+		char *end = burl;
+		index = out = (char *)malloc(100);
+		while(*end++);
+		while(*(--end)!='/');
+		end++;
+		while(burl!=end){
+			*index++ = *burl++;
+		}
+		while(*index++ = *str++);
 	}
 }

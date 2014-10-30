@@ -22,6 +22,7 @@
 #define LEN_GLOBAL_BASE_URL 11
 
 #include<string.h>
+#include<malloc.h>
 
 #define STATUS_0 0
 #define STATUS_1 1
@@ -36,8 +37,8 @@
 #define LEN_JAVASCRIPT 10 
 #define LEN_HTTPFLAG 7
 
-int analy(const char *url,const char *html,char **output);
-char* trans(const char *baseurl,const char *url);
+int analy(char *url,const char *html,char **output);
+char* trans(char *baseurl,char *url);
 
 
 #endif
