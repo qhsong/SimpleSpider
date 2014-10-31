@@ -104,6 +104,7 @@ int analy(char *url,const char* html,char **output,TRIE **head){
 				temp[pos]=0;
 				//printf("%s\n",temp);
 				outurl = trans(url,temp);
+				//trans("http://192.168.0.1/a/b/c/index.html","../../d/e/f.html");
 				if(outurl) { 
 					if(!trie_check(head,outurl)){
 						sendurl(outurl);
@@ -152,6 +153,8 @@ char* trans(char *baseurl,char *url) {
 				burl++;
 				index++;
 			}
+			*index='/';
+			index++;
 			while(*str){
 				*index = *str;
 				str++;
