@@ -18,10 +18,26 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-typedef struct url_msg_s{
+#include "trie.h"
+
+typedef struct url_rsp_s{
 	int size;
 	char **url;
-}URL_MSG;
+}URL_RSP;
 
+typedef struct url_req_s{
+	char *url;
+	char *html;
+}URL_REQ;
+
+typedef struct thread_param_s{
+	char *proto;
+	TRIE **head;
+}THREAD_PARM;
+
+#define END_ADDRESS "inproc://spider"
+#define GLOBAL_BASE_URL "tech.qq.com"
+#define LEN_GLOBAL_BASE_URL 11
+#define THREAD_NUM 1
 #endif
 

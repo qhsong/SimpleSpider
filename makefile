@@ -1,6 +1,6 @@
 all:spider
 spider:main.o
-	gcc -g main.o analysis.o trie.o -o spider
+	gcc -g main.o analysis.o trie.o -o spider -lnanomsg -lpthread 
 main.o:main.c analysis.o trie.o
 	gcc -g -c main.c -o main.o
 analysis.o:analysis.c analysis.h trie.o

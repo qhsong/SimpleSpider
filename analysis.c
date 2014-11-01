@@ -15,9 +15,38 @@
  *
  * =====================================================================================
  */
+#include<assert.h>
 #include "analysis.h"
+#include "common.h"
 
-int analy(char *url,const char* html,char **output,TRIE **head){
+void analy_run(void *arg){
+	char *buf=NULL,*index=NULL;
+	int sock = nn_socket(AF_SP,NN_REP);
+	assert(sock>=0);
+	int bytes=0,totalbytes=0;
+	int count=0;
+	URL_REQ *msg;
+	TRIE *t = (TRIE *)arg;
+	assert(nn_connect(sock,END_ADDRESS)>=0);
+	while(1){
+		while(totalbytes<sizeof(URL_REQ)){
+			bytes = nn_recv(sock,&index,sizeof(URL_REQ),0);
+			totalbytes += bytes;
+			count++;
+			if(count==1){
+				buf = index;
+			}else{
+				index += bytes;
+			}
+		}
+		msg=(URL_REQ *)buf;
+		analy(msg->url,msg->html,&t,sock);
+		nn_freemsg(buf);
+	}
+	return;
+}
+
+int analy(char *url,const char* html,TRIE **head,int nn_sock){
 	char *outurl;
 	int status = STATUS_0;
 	int i = 0,j = 0;
@@ -107,7 +136,7 @@ int analy(char *url,const char* html,char **output,TRIE **head){
 				//trans("http://192.168.0.1/a/b/c/index.html","../../d/e/f.html");
 				if(outurl) { 
 					if(!trie_check(head,outurl)){
-						sendurl(outurl);
+						sendurl(outurl,nn_sock);
 						printf("URL:%s\n",outurl);
 						trie_add(head,outurl);
 					}
@@ -190,6 +219,6 @@ char* trans(char *baseurl,char *url) {
 	return out;
 }
 
-int sendurl(char *url){
-
+int sendurl(char *url,int nn_sock){
+	while(nn_send(nn_sock,url,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 }
