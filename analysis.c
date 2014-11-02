@@ -16,6 +16,8 @@
  * =====================================================================================
  */
 #include<assert.h>
+#include<malloc.h>
+#include<stdlib.h>
 #include "analysis.h"
 #include "common.h"
 
@@ -26,38 +28,37 @@ void analy_run(void *arg){
 	int bytes=0,totalbytes=0;
 	int count=0;
 	URL_REQ *msg;
-	TRIE *t = (TRIE *)arg;
+	TRIE **t = (TRIE **)arg;
 	assert(nn_connect(sock,END_ADDRESS)>=0);
 	while(1){
-		while(totalbytes<sizeof(URL_REQ)){
-			bytes = nn_recv(sock,&index,sizeof(URL_REQ),0);
-			totalbytes += bytes;
-			count++;
-			if(count==1){
-				buf = index;
-			}else{
-				index += bytes;
-			}
-		}
-		msg=(URL_REQ *)buf;
-		analy(msg->url,msg->html,&t,sock);
-		nn_freemsg(buf);
+		bytes = nn_recv(sock,&index,sizeof(URL_REQ),0);
+		msg=(URL_REQ *)(index);
+		analy(msg->url,msg->html,t,sock);
 	}
+		//free(msg->url);
+		//free(msg->html);
+		//free(msg);
 	return;
 }
 
 int analy(char *url,const char* html,TRIE **head,int nn_sock){
 	char *outurl;
+	URL_RSP *rsp = (URL_RSP *)malloc(sizeof(URL_RSP));
+	rsp->size=0;
 	int status = STATUS_0;
 	int i = 0,j = 0;
 	char temp[100];
 	int pos=0;
+	trie_add(head,url);
 	while(html[i]){
 		switch(status) {
 		case STATUS_0:
 			j = i;
 			while(html[j]!='<' && html[j]!='\0') j++;
-			if(html[j]=='\0') return 0;
+			if(html[j]=='\0'){ 
+				sendurl(rsp,nn_sock);
+				return 0;
+			}
 			i = j+1;
 			status = STATUS_1;
 			break;
@@ -136,9 +137,10 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock){
 				//trans("http://192.168.0.1/a/b/c/index.html","../../d/e/f.html");
 				if(outurl) { 
 					if(!trie_check(head,outurl)){
-						sendurl(outurl,nn_sock);
-						printf("URL:%s\n",outurl);
 						trie_add(head,outurl);
+						//isendurl(outurl,nn_sock);
+						rsp->url[rsp->size++]=outurl;
+					//	printf("URL:%s\n",outurl);
 					}
 				}
 				status = STATUS_0;
@@ -219,6 +221,6 @@ char* trans(char *baseurl,char *url) {
 	return out;
 }
 
-int sendurl(char *url,int nn_sock){
-	while(nn_send(nn_sock,url,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+int sendurl(URL_RSP *rsp,int nn_sock){
+	while(nn_send(nn_sock,&rsp,sizeof(URL_RSP),NN_DONTWAIT)==EAGAIN);
 }

@@ -43,6 +43,5 @@ void analy_run(void *arg);
 
 int analy(char *url,const char *html,TRIE **head,int nn_sock);
 char* trans(char *baseurl,char *url);
-int sendurl(char *url,int sock);
 
 #endif

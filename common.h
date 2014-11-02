@@ -22,7 +22,7 @@
 
 typedef struct url_rsp_s{
 	int size;
-	char **url;
+	char *url[300];
 }URL_RSP;
 
 typedef struct url_req_s{
