@@ -17,6 +17,7 @@ int main(){
 	pthread_t pt[THREAD_NUM];
 	char temp[1024000];
 	int count;
+	char *index=NULL;
 	int bytes,totalbytes;
 	TRIE *head = trie_create();
 	count=fread(temp,1,1024000,in);
@@ -31,12 +32,10 @@ int main(){
 		pthread_create(&pt[i],NULL,analy_run,&head);	
 	}
 
-	while((count=nn_send(sock,&url,sizeof(URL_REQ),NN_DONTWAIT))==EAGAIN);
+	while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
 		while(1){
-		char *index=NULL;
-		int sock1 = sock;
-		bytes=nn_recv(sock,&index,sizeof(URL_RSP),0);
-		sock = sock1;
+		//sync
+		bytes=nn_recv(sock,&index,sizeof(URL_RSP *),0);
 		if(bytes==-1){
 			printf("%s\n",nn_strerror(errno));
 			fflush(stdout);
@@ -45,7 +44,7 @@ int main(){
 		q =(URL_RSP *)index;
 		for(i=0;i<q->size;i++){
 			printf("In main:%d %s\n",i,q->url[i]);
-			free(q->url[i]);
+			//free(q->url[i]);
 			fflush(stdout);
 		}
 		}

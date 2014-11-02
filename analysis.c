@@ -31,7 +31,7 @@ void analy_run(void *arg){
 	TRIE **t = (TRIE **)arg;
 	assert(nn_connect(sock,END_ADDRESS)>=0);
 	while(1){
-		bytes = nn_recv(sock,&index,sizeof(URL_REQ),0);
+		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
 		msg=(URL_REQ *)(index);
 		analy(msg->url,msg->html,t,sock);
 	}
@@ -222,5 +222,9 @@ char* trans(char *baseurl,char *url) {
 }
 
 int sendurl(URL_RSP *rsp,int nn_sock){
+	int i;
+	for(i=rsp->size;i<300;i++){
+		rsp->url[i]=NULL;
+	}
 	while(nn_send(nn_sock,&rsp,sizeof(URL_RSP),NN_DONTWAIT)==EAGAIN);
 }
