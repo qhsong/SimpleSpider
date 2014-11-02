@@ -11,6 +11,9 @@
 #include "common.h"
 
 int main(){
+	pthread_mutex_t send,recv;	
+	pthread_mutex_init(&send,NULL);
+	pthread_mutex_init(&recv,NULL);
 	FILE *in = fopen("techqq2w/index.html","r");
 	int i;
 	int sock = nn_socket(AF_SP,NN_REQ);
@@ -28,13 +31,16 @@ int main(){
 
 	url->url = "http://127.0.0.1/index.html";
 	url->html = temp;
+	THREAD_PARM parm = {&head,&send,&recv};
 	for(i=0;i<THREAD_NUM;i++){
-		pthread_create(&pt[i],NULL,analy_run,&head);	
+		pthread_create(&pt[i],NULL,analy_run,&parm);	
 	}
-
+	
 	while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
+	pthread_mutex_unlock(&send);
 		while(1){
 		//sync
+		pthread_mutex_lock(&recv);
 		bytes=nn_recv(sock,&index,sizeof(URL_RSP *),0);
 		if(bytes==-1){
 			printf("%s\n",nn_strerror(errno));

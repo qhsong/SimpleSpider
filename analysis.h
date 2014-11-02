@@ -22,6 +22,7 @@
 #include<malloc.h>
 #include<nanomsg/nn.h>
 #include<nanomsg/reqrep.h>
+#include<pthread.h>
 
 #include "trie.h"
 
@@ -41,7 +42,7 @@
 
 void analy_run(void *arg);
 
-int analy(char *url,const char *html,TRIE **head,int nn_sock);
+int analy(char *url,const char *html,TRIE **head,int nn_sock,pthread_mutex_t *mutex);
 char* trans(char *baseurl,char *url);
 
 #endif

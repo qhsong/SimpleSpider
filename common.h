@@ -31,8 +31,9 @@ typedef struct url_req_s{
 }URL_REQ;
 
 typedef struct thread_param_s{
-	char *proto;
 	TRIE **head;
+	pthread_mutex_t *send;
+	pthread_mutex_t *recv;
 }THREAD_PARM;
 
 #define END_ADDRESS "inproc://spider"
