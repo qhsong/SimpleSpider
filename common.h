@@ -46,6 +46,7 @@ typedef struct thread_param_s{
 	TRIE **head;
 	pthread_mutex_t *send;
 	pthread_mutex_t *recv;
+	int sock;
 }THREAD_PARM;
 
 typedef struct http_response_s{
@@ -55,6 +56,7 @@ typedef struct http_response_s{
 	int nowlength;
 	int conn;
 	int ihead;
+	char base_url[1024];
 	struct evbuffer *html;
 }HTTP_RES;
 
@@ -66,13 +68,15 @@ typedef struct start_point_st{
 
 typedef struct connser_thread_s{
 	START_POINT *s;
-	
+	FILE *wr_file;	
 }CONNSER_THREAD;
 
 typedef struct event_parm_s{
 	HTTP_RES *t;
 	START_POINT *st;
 	struct event_base *base; 
+	int sock;
+	FILE *wr_file;
 }EVENT_PARM;
 
 #define END_ADDRESS "inproc://spider"

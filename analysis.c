@@ -23,17 +23,15 @@
 
 void analy_run(void *arg){
 	char *buf=NULL,*index=NULL;
-	int sock = nn_socket(AF_SP,NN_REP);
-	assert(sock>=0);
 	int bytes=0,totalbytes=0;
 	int count=0;
 	URL_REQ *msg;
 	THREAD_PARM *parm;
 	parm = (THREAD_PARM *)arg;
 	TRIE **t = parm->head;
-	assert(nn_connect(sock,END_ADDRESS)>=0);
+	int sock = parm->sock;
 	while(1){
-		pthread_mutex_lock(parm->send);
+	////	pthread_mutex_lock(parm->send);
 		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
 		msg=(URL_REQ *)(index);
 		analy(msg->url,msg->html,t,sock,parm->recv);
@@ -46,8 +44,6 @@ void analy_run(void *arg){
 
 int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mutex){
 	char *outurl;
-	URL_RSP *rsp = (URL_RSP *)malloc(sizeof(URL_RSP));
-	rsp->size=0;
 	int status = STATUS_0;
 	int i = 0,j = 0;
 	char temp[100];
@@ -60,7 +56,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 			while(html[j]!='<' && html[j]!='\0') j++;
 			if(html[j]=='\0'){ 
 				sendurl(rsp,nn_sock);
-				pthread_mutex_unlock(mutex);
+				//pthread_mutex_unlock(mutex);
 				return 0;
 			}
 			i = j+1;
@@ -143,7 +139,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 					if(!trie_check(head,outurl)){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
-						rsp->url[rsp->size++]=outurl;
+						while(nn_send(nn_sock,output,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 					//	printf("URL:%s\n",outurl);
 					}
 				}
@@ -233,9 +229,4 @@ char* trans(char *baseurl,char *url) {
 }
 
 int sendurl(URL_RSP *rsp,int nn_sock){
-	int i;
-	for(i=rsp->size;i<300;i++){
-		rsp->url[i]=NULL;
-	}
-	while(nn_send(nn_sock,&rsp,sizeof(URL_RSP),NN_DONTWAIT)==EAGAIN);
 }

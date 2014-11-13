@@ -51,34 +51,36 @@ int main(int argc, char ** argv){
 	TRIE *head = trie_create();
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
-	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
+//	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
-	CONNSER_THREAD s = {&sp};	
+	CONNSER_THREAD s = {&sp,in};	
+	while(nn_send(sock,sp.s_add,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+
 	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
-	THREAD_PARM parm = {&head,&send,&recv};
+	THREAD_PARM parm = {&head,&send,&recv,sock};
 	for(i=0;i<THREAD_NUM;i++){
 		pthread_create(&pt[1],NULL,analy_run,&parm);	
 	}
 	
-	while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
-	pthread_mutex_unlock(&send);
-		while(1){
+	//while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
+	//pthread_mutex_unlock(&send);
+	//	while(1){
 		//sync
-		pthread_mutex_lock(&recv);
-		bytes=nn_recv(sock,&index,sizeof(URL_RSP *),0);
-		if(bytes==-1){
-			printf("%s\n",nn_strerror(errno));
-			fflush(stdout);
-		}
-		URL_RSP *q = NULL;
-		q =(URL_RSP *)index;
-		for(i=0;i<q->size;i++){
-			printf("In main:%d %s\n",i,q->url[i]);
+	//	pthread_mutex_lock(&recv);
+	//	bytes=nn_recv(sock,&index,sizeof(URL_RSP *),0);
+	//	if(bytes==-1){
+	//		printf("%s\n",nn_strerror(errno));
+	//		fflush(stdout);
+	//	}
+	//	URL_RSP *q = NULL;
+//		q =(URL_RSP *)index;
+//		for(i=0;i<q->size;i++){
+//			printf("In main:%d %s\n",i,q->url[i]);
 			//free(q->url[i]);
-			fflush(stdout);
-		}
-		}
-	for(i=0;i<THREAD_NUM;i++){
+//			fflush(stdout);
+//		}
+//		}
+	for(i=0;i<2;i++){
 		pthread_join(pt[i],NULL);
 	}
 	return 0;
