@@ -18,13 +18,13 @@
 #include<assert.h>
 #include<malloc.h>
 #include<stdlib.h>
+
 #include "analysis.h"
 #include "common.h"
 
 void analy_run(void *arg){
-	char *buf=NULL,*index=NULL;
-	int bytes=0,totalbytes=0;
-	int count=0;
+	char *index=NULL;
+	int bytes=0;
 	URL_REQ *msg;
 	THREAD_PARM *parm;
 	parm = (THREAD_PARM *)arg;
@@ -34,7 +34,15 @@ void analy_run(void *arg){
 	////	pthread_mutex_lock(parm->send);
 		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
 		msg=(URL_REQ *)(index);
-		analy(msg->url,msg->html,t,sock,parm->recv);
+		int h_len = evbuffer_get_length(msg->html);
+		char *html = (char *)malloc(h_len);
+		evbuffer_remove(msg->html,html,h_len);
+		analy(msg->url,html,t,sock,parm->recv);
+		evbuffer_free(msg->html);
+		free(msg->url);
+		free(index);
+		msg=NULL;
+		index=NULL;
 	}
 		//free(msg->url);
 		//free(msg->html);
@@ -54,8 +62,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 		case STATUS_0:
 			j = i;
 			while(html[j]!='<' && html[j]!='\0') j++;
-			if(html[j]=='\0'){ 
-				sendurl(rsp,nn_sock);
+			if(html[j]=='\0'){
 				//pthread_mutex_unlock(mutex);
 				return 0;
 			}
@@ -139,7 +146,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 					if(!trie_check(head,outurl)){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
-						while(nn_send(nn_sock,output,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+						while(nn_send(nn_sock,outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 					//	printf("URL:%s\n",outurl);
 					}
 				}
@@ -226,7 +233,4 @@ char* trans(char *baseurl,char *url) {
 		while(*index++ = *str++);
 	}
 	return out;
-}
-
-int sendurl(URL_RSP *rsp,int nn_sock){
 }

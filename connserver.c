@@ -2,10 +2,9 @@
 #include<pthread.h>
 #include<string.h>
 #include<iconv.h>
-#include<time.h>
-#include<sys/time.h>
+#include<assert.h>
 #include<malloc.h>
-
+#include<arpa/inet.h>
 #include"connserver.h"
 
 struct timeval s;
@@ -23,12 +22,12 @@ void logp(int sev,const char *msg){
 	fprintf(logger,"[%s] %s\n", s, msg);
 }
 
-void write(bufferevent *bev , int sock , HTTP_RES *res) {
+void write(struct bufferevent *bev , int sock , HTTP_RES *res) {
 	char *url=NULL;
-	nn_recv(sock,url,sizeof(char *),0);
+	nn_recv(sock,&url,sizeof(char *),0);
 	if(1){
 		char temp[1024];
-		sprintf(temp,"GET /test.html HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost: 127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url);
+		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost: 127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url);
 		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(res->base_url,url);
 		free(url);
@@ -39,8 +38,8 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 	HTTP_RES *t = ((EVENT_PARM *)ptr)->t;
 	if(events&BEV_EVENT_CONNECTED) {
 		char temp[300];
-		char *url;
-		nn_recv(((EVENT_PARM *)ptr)->sock,url,sizeof(char *),0);
+		char *url=NULL;
+		nn_recv(((EVENT_PARM *)ptr)->sock,&url,sizeof(char *),0);
 		printf("connected!\n");
 		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent:Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection:keep-alive\r\n\r\n",url);
 		//printf("%s\n",temp);
@@ -141,18 +140,20 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				//printf("s->%d\n",s->nowlength);
 				if(s->nowlength == s->clength){
 					//do sth.
-					char *ht = (char *)malloc(s->clength+1);
-					evbuffer_remove(s->html,ht,s->clength+1);
+					URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
+					req->url = (char *)malloc(strlen(pep->t->base_url)+1);
+					strcpy(req->url,pep->t->base_url);
+					req->html = evbuffer_new();
+					evbuffer_add_buffer(req->html,s->html);
 					//printf("%s",ht);
 					init_request(s);
 					c++;
 					printf("%d\n",c);
-					//TODO:make a URL_REQ 
-					while(nn_send(pep->sock,ht,sizeof(char *),NN_DONTWAIT));
+					while(nn_send(pep->sock,&req,sizeof(URL_REQ *),NN_DONTWAIT));
 					if(c==1000){
 						event_base_loopexit(pep->base,NULL);
 					}
-					write((void *)bev,pep->sock,pep->t);
+					write(bev,pep->sock,((EVENT_PARM *)ptr)->t);
 				}
 				return;
 				break;
@@ -189,13 +190,15 @@ void connserver_run(void *arg){
 	struct event_base *base;
 	struct bufferevent *bev=NULL;
 	HTTP_RES h;
+	h.html = NULL;
 	init_request(&h);
+
 	logger = fopen("log.txt","w");
 	base = event_base_new();
 	event_set_log_callback(logp);
 	evthread_use_pthreads();
 
-	int nn_socket(AF_SP,NN_PAIR);
+	int sock=nn_socket(AF_SP,NN_PAIR);
 	assert(sock>=0);
 	assert(nn_connect(sock,END_ADDRESS));
 
@@ -206,7 +209,7 @@ void connserver_run(void *arg){
 	pa->sock = sock;
 	pa->wr_file = pct->wr_file;
 
-	if(init_bvbuff(pa,bev,sock) < 0){
+	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	
 	}
 		//pthread_t pt;
@@ -215,5 +218,5 @@ void connserver_run(void *arg){
 	event_base_free(base);
 	base=NULL;
 	free(pa);
-	return 0;
+	return;
 }

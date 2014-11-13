@@ -23,7 +23,7 @@
 #include<event2/thread.h>
 #include<errno.h>
 #include<event2/util.h>
-#include<sys/socket.h>
+
 #include<nanomsg/nn.h>
 #include<nanomsg/pair.h>
 #include<pthread.h>
@@ -39,7 +39,7 @@ typedef struct url_rsp_s{
 
 typedef struct url_req_s{
 	char *url;
-	char *html;
+	struct evbuffer *html;
 }URL_REQ;
 
 typedef struct thread_param_s{

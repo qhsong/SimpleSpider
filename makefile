@@ -10,4 +10,4 @@ connserver.o:connserver.c connserver.h common.h
 trie.o:trie.h trie.c
 	gcc -g -c trie.c -o trie.o
 clean:
-	rm *.o && rm spider
+	rm *.o && rm crawler

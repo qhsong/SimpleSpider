@@ -20,8 +20,6 @@
 
 #include<string.h>
 #include<malloc.h>
-#include<nanomsg/nn.h>
-#include<nanomsg/reqrep.h>
 #include<pthread.h>
 
 #include "trie.h"
