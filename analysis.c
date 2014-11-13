@@ -138,7 +138,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 				temp[pos]=0;
 				//printf("%s\n",temp);
 				outurl = trans(url,temp);
-				//trans("http://192.168.0.1/a/b/c/index.html","../../d/e/f.html");
+			//	trans("http://192.168.0.1/a/b/c/index.html","f.html");
 				if(outurl) { 
 					if(!trie_check(head,outurl)){
 						trie_add(head,outurl);
@@ -159,10 +159,11 @@ char* trans(char *baseurl,char *url) {
 		str += LEN_HTTPFLAG;
 		if(!strncmp(str,GLOBAL_BASE_URL,LEN_GLOBAL_BASE_URL)){
 			index = out = (char *)malloc(1024);
-			strcat(out,"http://");
-			index += LEN_HTTPFLAG;
-			burl += LEN_HTTPFLAG;
-			while((*index++=*burl++)!='/');
+			//strcat(out,"http://");
+			//index += LEN_HTTPFLAG;
+			*(index++)='/';
+			//burl += LEN_HTTPFLAG;
+			//while((*index++=*burl++)!='/');
 			while(*str++!='/');
 			while(*index++=*str++);
 			*index = '\0';
@@ -183,6 +184,9 @@ char* trans(char *baseurl,char *url) {
 			printf("Relative address error!%s",url);
 			return NULL;	//address error
 		}else{
+			*(index++) = '/';
+			burl += LEN_HTTPFLAG;
+			while(*(burl++) != '/');
 			while(burl!=end){
 				*index = *burl;
 				burl++;
@@ -198,14 +202,14 @@ char* trans(char *baseurl,char *url) {
 		}
 	}else if(*str=='/'){
 		index = out = (char *)malloc(1024);
-		strcpy(out,"http://");
-		burl += LEN_HTTPFLAG;
-		index += LEN_HTTPFLAG;
-		while(*burl != '/'){
-			*index = *burl;
-			index++;
-			burl++;
-		}
+		//strcpy(out,"http://");
+		//burl += LEN_HTTPFLAG;
+		//index += LEN_HTTPFLAG;
+		//while(*burl != '/'){
+		//	*index = *burl;
+		//	index++;
+		//	burl++;
+		//}
 		while(*str){
 			*index = *str;
 			str++;
@@ -214,9 +218,12 @@ char* trans(char *baseurl,char *url) {
 	}else{
 		char *end = burl;
 		index = out = (char *)malloc(1024);
+		*index++ = '/';
 		while(*end++);
 		while(*(--end)!='/');
 		end++;
+		burl += LEN_HTTPFLAG;
+		while(*(burl++)!='/');
 		while(burl!=end){
 			*index++ = *burl++;
 		}

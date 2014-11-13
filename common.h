@@ -17,6 +17,18 @@
  */
 #ifndef COMMON_H
 #define COMMON_H
+#include<event2/event.h>
+#include<event2/bufferevent.h>
+#include<event2/buffer.h>
+#include<event2/thread.h>
+#include<errno.h>
+#include<event2/util.h>
+#include<sys/socket.h>
+#include<nanomsg/nn.h>
+#include<nanomsg/pair.h>
+#include<pthread.h>
+#include<malloc.h>
+
 
 #include "trie.h"
 
@@ -36,9 +48,37 @@ typedef struct thread_param_s{
 	pthread_mutex_t *recv;
 }THREAD_PARM;
 
+typedef struct http_response_s{
+	int status;
+	int http_status_code;
+	int clength;
+	int nowlength;
+	int conn;
+	int ihead;
+	struct evbuffer *html;
+}HTTP_RES;
+
+typedef struct start_point_st{
+	char ip[16];
+	int port;
+	char s_add[1024];
+}START_POINT;
+
+typedef struct connser_thread_s{
+	START_POINT *s;
+	
+}CONNSER_THREAD;
+
+typedef struct event_parm_s{
+	HTTP_RES *t;
+	START_POINT *st;
+	struct event_base *base; 
+}EVENT_PARM;
+
 #define END_ADDRESS "inproc://spider"
 #define GLOBAL_BASE_URL "tech.qq.com"
 #define LEN_GLOBAL_BASE_URL 11
 #define THREAD_NUM 1
+
 #endif
 

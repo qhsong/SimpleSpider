@@ -1,39 +1,63 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<assert.h>
-#include<nanomsg/nn.h>
-#include<nanomsg/reqrep.h>
-#include<pthread.h>
-#include<malloc.h>
-
+#include "connserver.h"
 #include "analysis.h"
 #include "trie.h"
 #include "common.h"
 
-int main(){
+int main(int argc, char ** argv){
+	int itemp;
 	pthread_mutex_t send,recv;	
 	pthread_mutex_init(&send,NULL);
 	pthread_mutex_init(&recv,NULL);
-	FILE *in = fopen("techqq2w/index.html","r");
-	int i;
-	int sock = nn_socket(AF_SP,NN_REQ);
-	pthread_t pt[THREAD_NUM];
-	char temp[1024000];
+	if(argc!=3){
+		printf("USAGE:crawel address outputfile\n");
+		return 0;
+	}
+
+	char *baseurl = (char *)malloc(strlen(argv[1])+1),*index;
+	strcpy(baseurl,argv[1]);
+	index = baseurl;
+	index += 7;
+	START_POINT sp;
+	sp.port = 0;
+	int i=0;
+	while(!(*index=='/' || *index==':')){
+		sp.ip[i++]=*index++;
+	}
+	sp.ip[i]='\0';
+	if(*index=='/'){
+		sp.port = 80;
+	}else{
+		index++;
+		while(*index!='/'){
+			sp.port = sp.port * 10 + (*index - '0');
+			index++;
+		}
+	}
+	i = 0;
+	while(*index!='\0'){
+		sp.s_add[i++] = *index++;
+	}
+	sp.s_add[i]='\0';
+	//printf("ip:%s|port:%d|s_add:%s",sp.ip,sp.port,sp.s_add);
+
+	FILE *in = fopen(argv[2],"w");
+	int sock = nn_socket(AF_SP,NN_PAIR);
+	pthread_t pt[2];
 	int count;
-	char *index=NULL;
 	int bytes,totalbytes;
 	TRIE *head = trie_create();
-	count=fread(temp,1,1024000,in);
-	temp[count]=0;
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
 	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
-	url->url = "http://127.0.0.1/index.html";
-	url->html = temp;
+	CONNSER_THREAD s = {&sp};	
+	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
 	THREAD_PARM parm = {&head,&send,&recv};
 	for(i=0;i<THREAD_NUM;i++){
-		pthread_create(&pt[i],NULL,analy_run,&parm);	
+		pthread_create(&pt[1],NULL,analy_run,&parm);	
 	}
 	
 	while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
