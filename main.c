@@ -10,9 +10,9 @@
 int main(int argc, char * argv[]){
 	int itemp;
 	pthread_t pt[2];
-	pthread_mutex_t isend,irecv;	
-	pthread_mutex_init(&isend,NULL);
-	pthread_mutex_init(&irecv,NULL);
+//	pthread_mutex_t isend,irecv;	
+//	pthread_mutex_init(&isend,NULL);
+//	pthread_mutex_init(&irecv,NULL);
 	if(argc!=3){
 		printf("USAGE:crawel address outputfile\n");
 		return 0;
@@ -28,41 +28,17 @@ int main(int argc, char * argv[]){
 	assert(nn_bind(sock,END_ADDRESS));
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
-	char *baseurl = (char *)malloc(strlen(argv[1])+1),*index;
-	strcpy(baseurl,argv[1]);
-	index = baseurl;
-	index += 7;
-	START_POINT sp;
-	sp.port = 0;
-	int i=0;
-	while(!(*index=='/' || *index==':')){
-		sp.ip[i++]=*index++;
-	}
-	sp.ip[i]='\0';
-	if(*index=='/'){
-		sp.port = 80;
-	}else{
-		index++;
-		while(*index!='/'){
-			sp.port = sp.port * 10 + (*index - '0');
-			index++;
-		}
-	}
-	i = 0;
-	while(*index!='\0'){
-		sp.s_add[i++] = *index++;
-	}
-	sp.s_add[i]='\0';
-	index=NULL;
-	free(baseurl);
-	baseurl = NULL;
+	START_POINT *sp =(START_POINT *)malloc(sizeof(START_POINT));
+	get_address(argv[1],sp);
 	//printf("ip:%s|port:%d|s_add:%s",sp.ip,sp.port,sp.s_add);
 	//
-	CONNSER_THREAD s = {&sp,in};	
-	while(nn_send(sock,sp.s_add,sizeof(char *),NN_DONTWAIT)==EAGAIN);
-
+	CONNSER_THREAD s = {sp,in};	
+	char *temp = &(sp->s_add);
 	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
-	THREAD_PARM parm = {&head,&isend,&irecv,sock};
+	while(nn_send(sock,&temp,sizeof(char *),0)==EAGAIN);
+
+	THREAD_PARM parm = {&head,NULL,NULL,sock};
+	int i;
 	for(i=0;i<THREAD_NUM;i++){
 		pthread_create(&pt[1],NULL,analy_run,&parm);	
 	}

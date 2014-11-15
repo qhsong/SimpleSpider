@@ -22,7 +22,7 @@ void logp(int sev,const char *msg){
 	fprintf(logger,"[%s] %s\n", s, msg);
 }
 
-void write(struct bufferevent *bev , int sock , HTTP_RES *res) {
+void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res) {
 	char *url=NULL;
 	nn_recv(sock,&url,sizeof(char *),0);
 	if(1){
@@ -42,10 +42,9 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 		nn_recv(((EVENT_PARM *)ptr)->sock,&url,sizeof(char *),0);
 		printf("connected!\n");
 		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent:Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection:keep-alive\r\n\r\n",url);
-		//printf("%s\n",temp);
+		printf("%s\n",url);
 		bufferevent_write(bev,temp,strlen(temp));	
 		strcpy(t->base_url,url);
-		free(url);
 	}else if(events&BEV_EVENT_ERROR){
 		printf("error!,%s",evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 		bufferevent_free(bev);
@@ -66,7 +65,7 @@ void init_request(HTTP_RES *s){
 	s->nowlength = 0;
 	s->ihead = 0;
 	s->http_status_code = 0;
-	if(!s->html)	evbuffer_free(s->html);
+	if(s->html)	evbuffer_free(s->html);
 	s->html = evbuffer_new();
 }
 
@@ -84,7 +83,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 	//iout = 102400;
 	//char *in=temp,*out=temp2;
 	//iconv(conv,&in,&it,&out,&iout);
-	printf("%s\n",temp);
+	//printf("%s\n",temp);
 	int count=0;
 	while(count<=read){
 		switch(s->status){
@@ -145,15 +144,16 @@ void eventRead(struct bufferevent *bev,void *ptr){
 					strcpy(req->url,pep->t->base_url);
 					req->html = evbuffer_new();
 					evbuffer_add_buffer(req->html,s->html);
+					c++;
+					printf("%d ",c);
+					printf("%s %d\n",s->base_url,s->http_status_code);
 					//printf("%s",ht);
 					init_request(s);
-					c++;
-					printf("%d\n",c);
-					while(nn_send(pep->sock,&req,sizeof(URL_REQ *),NN_DONTWAIT));
+					nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
 					if(c==1000){
 						event_base_loopexit(pep->base,NULL);
 					}
-					write(bev,pep->sock,((EVENT_PARM *)ptr)->t);
+					write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t);
 				}
 				return;
 				break;
@@ -185,7 +185,7 @@ int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
 	return 0;
 }
 
-void connserver_run(void *arg){
+void* connserver_run(void *arg){
 	CONNSER_THREAD *pct =(CONNSER_THREAD *)arg;
 	struct event_base *base;
 	struct bufferevent *bev=NULL;
@@ -218,5 +218,5 @@ void connserver_run(void *arg){
 	event_base_free(base);
 	base=NULL;
 	free(pa);
-	return;
+	return NULL;
 }

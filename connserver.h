@@ -4,10 +4,10 @@
 #include"common.h"
 
 void logp(int sev,const char *msg);
-void write(struct bufferevent *bev , int sock , HTTP_RES *res);
+void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res);
 void eventcb(struct bufferevent *bev,short events,void *ptr);
 void init_request(HTTP_RES *s);
 void eventRead(struct bufferevent *bev,void *ptr);
 int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev);
-void connserver_run(void *argv);
+void* connserver_run(void *argv);
 #endif

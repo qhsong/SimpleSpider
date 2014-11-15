@@ -20,9 +20,8 @@
 #include<stdlib.h>
 
 #include "analysis.h"
-#include "common.h"
 
-void analy_run(void *arg){
+void* analy_run(void *arg){
 	char *index=NULL;
 	int bytes=0;
 	URL_REQ *msg;
@@ -47,7 +46,7 @@ void analy_run(void *arg){
 		//free(msg->url);
 		//free(msg->html);
 		//free(msg);
-	return;
+	return NULL;
 }
 
 int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mutex){
@@ -146,7 +145,7 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 					if(!trie_check(head,outurl)){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
-						while(nn_send(nn_sock,outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+						while(nn_send(nn_sock,&outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 					//	printf("URL:%s\n",outurl);
 					}
 				}
@@ -183,20 +182,19 @@ char* trans(char *baseurl,char *url) {
 			while((*--end)!='/');
 			str += 3;	//"../"length
 		}
-		if(end == (burl+6)) {	// http:/(/) if end point (/) then exit it.
+		if(end == burl && str[0]=='.' &&str[1]=='.') {
 			printf("Relative address error!%s",url);
 			return NULL;	//address error
 		}else{
-			*(index++) = '/';
-			burl += LEN_HTTPFLAG;
-			while(*(burl++) != '/');
+			//*(index++) = '/';
+			end++;
 			while(burl!=end){
 				*index = *burl;
 				burl++;
 				index++;
 			}
-			*index='/';
-			index++;
+			//*index='/';
+			//index++;
 			while(*str){
 				*index = *str;
 				str++;
@@ -221,11 +219,12 @@ char* trans(char *baseurl,char *url) {
 	}else{
 		char *end = burl;
 		index = out = (char *)malloc(1024);
-		*index++ = '/';
+		*index = '/';
+		index++;
 		while(*end++);
 		while(*(--end)!='/');
 		end++;
-		burl += LEN_HTTPFLAG;
+		//burl += LEN_HTTPFLAG;
 		while(*(burl++)!='/');
 		while(burl!=end){
 			*index++ = *burl++;
@@ -233,4 +232,38 @@ char* trans(char *baseurl,char *url) {
 		while(*index++ = *str++);
 	}
 	return out;
+}
+
+void get_address(char *arg,START_POINT *sp){
+	char *baseurl = (char *)malloc(strlen(arg)+1),*index;
+	strcpy(baseurl,arg);
+	index = baseurl;
+	index += 7;
+	sp->port = 0;
+	int i=0;
+	while(!(*index=='/' || *index==':')){
+		sp->ip[i++]=*index++;
+	}
+	sp->ip[i]='\0';
+	if(*index=='/'&& *index!='\0'){
+		sp->port = 80;
+	}else{
+		index++;
+		while(*index!='/' &&*index!='\0'){
+			sp->port = sp->port * 10 + (*index - '0');
+			index++;
+		}
+	}
+	i = 0;
+	if(*index=='\0'){
+		sp->s_add[i++] = *index++;
+	}else{
+		while(*index!='\0'){
+			sp->s_add[i++] = *index++;
+		}
+	}
+	sp->s_add[i]='\0';
+	index=NULL;
+	free(baseurl);
+	baseurl = NULL;
 }

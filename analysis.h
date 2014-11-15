@@ -21,7 +21,7 @@
 #include<string.h>
 #include<malloc.h>
 #include<pthread.h>
-
+#include "common.h"
 #include "trie.h"
 
 #define LEN_HREF 4
@@ -38,9 +38,10 @@
 #define STATUS_7 7
 
 
-void analy_run(void *arg);
+void* analy_run(void *arg);
 
 int analy(char *url,const char *html,TRIE **head,int nn_sock,pthread_mutex_t *mutex);
 char* trans(char *baseurl,char *url);
 
+void get_address(char *arg,START_POINT *sp);
 #endif
