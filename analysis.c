@@ -140,11 +140,12 @@ int analy(char *url,const char* html,TRIE **head,int nn_sock,pthread_mutex_t *mu
 				temp[pos]=0;
 				//printf("%s\n",temp);
 				outurl = trans(url,temp);
-			//	trans("http://192.168.0.1/a/b/c/index.html","f.html");
+				//trans("/a/b/index.gg","../../index.html");
 				if(outurl) { 
 					if(!trie_check(head,outurl)){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
+						printf("%s %s %s\n",url,temp,outurl);
 						while(nn_send(nn_sock,&outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 					//	printf("URL:%s\n",outurl);
 					}
@@ -200,6 +201,8 @@ char* trans(char *baseurl,char *url) {
 				str++;
 				index++;
 			}
+			index='\0';
+			index++;
 		}
 	}else if(*str=='/'){
 		index = out = (char *)malloc(1024);

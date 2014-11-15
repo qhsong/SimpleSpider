@@ -9,7 +9,7 @@
 
 int main(int argc, char * argv[]){
 	int itemp;
-	pthread_t pt[2];
+	pthread_t pt[3];
 //	pthread_mutex_t isend,irecv;	
 //	pthread_mutex_init(&isend,NULL);
 //	pthread_mutex_init(&irecv,NULL);

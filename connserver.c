@@ -111,7 +111,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 							s->clength = s->clength *10+(temp[count]-'0'); 
 							count++;
 						}
-						printf("Total:%d\n",s->clength);
+						//printf("Total:%d\n",s->clength);
 						count += 2;
 					}else if(!strncasecmp(temp+count,"connection:",11)){
 						count += 11;
@@ -145,8 +145,8 @@ void eventRead(struct bufferevent *bev,void *ptr){
 					req->html = evbuffer_new();
 					evbuffer_add_buffer(req->html,s->html);
 					c++;
-					printf("%d ",c);
-					printf("%s %d\n",s->base_url,s->http_status_code);
+					//printf("%d ",c);
+					//printf("%s %d\n",s->base_url,s->http_status_code);
 					//printf("%s",ht);
 					init_request(s);
 					nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
