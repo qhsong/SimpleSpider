@@ -79,6 +79,13 @@ typedef struct event_parm_s{
 	FILE *wr_file;
 }EVENT_PARM;
 
+typedef struct analy_parm_s{
+	char *url;
+	char *html;
+	TRIE **head;
+	int nn_sock;
+	pthread_mutex_t *trie_mutex;
+}ANALY_PARM;
 #define END_ADDRESS "inproc://spider"
 #define GLOBAL_BASE_URL "tech.qq.com"
 #define LEN_GLOBAL_BASE_URL 11
