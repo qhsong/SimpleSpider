@@ -29,11 +29,12 @@ int main(int argc, char * argv[]){
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	START_POINT *sp =(START_POINT *)malloc(sizeof(START_POINT));
+	//sp->s_add = (char *)malloc(sizeof(char)*1024);
 	get_address(argv[1],sp);
 	//printf("ip:%s|port:%d|s_add:%s",sp.ip,sp.port,sp.s_add);
 	//
 	CONNSER_THREAD s = {sp,in};	
-	char *temp = &(sp->s_add);
+	char *temp = (char *)&(sp->s_add);
 	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
 	while(nn_send(sock,&temp,sizeof(char *),0)==EAGAIN);
 

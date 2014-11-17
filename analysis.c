@@ -40,10 +40,12 @@ void* analy_run(void *arg){
 		//printf("analy_run read: %d\n",ic++);
 		msg=(URL_REQ *)(index);
 		int h_len = evbuffer_get_length(msg->html);
+		//printf("%d\n",h_len);
+		//fflush(stdout);
 		char *html = (char *)malloc(h_len+1);
 		evbuffer_remove(msg->html,html,h_len);
 		html[h_len]='\0';
-		printf("recv the url %s\n",msg->url);
+		printf("analy recv the url %s\n",msg->url);
 		ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
 		ap->url = msg->url;
 		ap->html = html;
@@ -175,7 +177,7 @@ void analy(void *arg){
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
 						while(nn_send(nn_sock,&outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
-						printf("trans_write %s",outurl);
+						printf("trans_write %s,%s\n",outurl,url);
 						//printf("analy write:%d\n",icc++);
 					//	printf("URL:%s\n",outurl);
 					}
@@ -269,7 +271,7 @@ char* trans(char *baseurl,char *url) {
 }
 
 void get_address(char *arg,START_POINT *sp){
-	char *baseurl = (char *)malloc(strlen(arg)+1),*index;
+	char *baseurl = (char *)malloc(strlen(arg)+10),*index;
 	strcpy(baseurl,arg);
 	index = baseurl;
 	index += 7;

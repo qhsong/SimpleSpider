@@ -11,6 +11,7 @@ struct timeval s;
 FILE *logger;
 
 void logp(int sev,const char *msg){
+	static int c= 0;
 	const char *s;
 	switch (sev) {
 	case _EVENT_LOG_DEBUG: s = "debug"; break;
@@ -19,7 +20,8 @@ void logp(int sev,const char *msg){
     case _EVENT_LOG_ERR:   s = "error"; break;
     default:               s = "?";     break; /* never reached */
     }
-	fprintf(logger,"[%s] %s\n", s, msg);
+	fprintf(logger,"%d [%s] %s\n",c++, s, msg);
+	fflush(logger);
 }
 
 void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res) {
@@ -27,7 +29,7 @@ void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res) {
 	char *url=NULL;
 	nn_recv(sock,&url,sizeof(char *),0);
 	if(1){
-		char temp[1024];
+		char temp[10240];
 		printf("write to server url:%s\n",url);
 		//printf("write_to_server read:%d\n",count++);
 		fflush(stdout);
@@ -41,23 +43,25 @@ void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res) {
 void eventcb(struct bufferevent *bev,short events,void *ptr){
 	HTTP_RES *t = ((EVENT_PARM *)ptr)->t;
 	static int ic = 0;
+	EVENT_PARM *ep = (EVENT_PARM *)ptr;
 	if(events&BEV_EVENT_CONNECTED) {
-		char temp[300];
+		printf("Connected!\n");
 		char *url=NULL;
-		nn_recv(((EVENT_PARM *)ptr)->sock,&url,sizeof(char *),0);
-		printf("connected!\n");
-		//printf("url:%s\n",url);
-		printf("eventcb read :%d\n",ic++);
+		nn_recv(ep->sock,&url,sizeof(char *),0);
+		char temp[10240];
+		printf("write to server url:%s\n",url);
+		//printf("write_to_server read:%d\n",count++);
 		fflush(stdout);
-		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent:Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection:keep-alive\r\n\r\n",url);
-		printf("write to server in conn:%s\n",url);
-		bufferevent_write(bev,temp,strlen(temp));	
+		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost: 127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url);
+		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(t->base_url,url);
+		
 	}else if(events&BEV_EVENT_ERROR){
 		printf("error!,%s",evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 		bufferevent_free(bev);
 	}else if(events&BEV_EVENT_TIMEOUT){
 		printf("Timeout happend!\n");
+		write_to_server(bev,ep->sock,ep->t);
 		//printf("%s\n",temp);
 	}else if(events&BEV_EVENT_EOF){
 		printf("connection disconnect!\n");	
@@ -145,23 +149,25 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				evbuffer_add(s->html,temp+count,len);
 				s->nowlength += len;
 				//printf("s->%d\n",s->nowlength);
-				if(s->nowlength == s->clength){
+				if(s->nowlength >= s->clength){
 					//do sth.
 					URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
 					req->url = (char *)malloc(strlen(pep->t->base_url)+1);
 					strcpy(req->url,pep->t->base_url);
 					req->html = evbuffer_new();
 					evbuffer_add_buffer(req->html,s->html);
-					//printf("eventRead write : %d\n",c++);
+					printf("eventRead write : %d\n",c++);
 					fflush(stdout);
 					//printf("%d ",c);
 					//printf("%s %d\n",s->base_url,s->http_status_code);
 					//printf("%s",ht);
-					init_request(s);
 					nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
-					if(c==1000){
-						event_base_loopexit(pep->base,NULL);
-					}
+					fprintf(pep->wr_file,"%d %s %d %d\n",c,s->base_url,s->nowlength,s->http_status_code);
+					fflush(pep->wr_file);
+					init_request(s);
+				//	if(c==1000){
+				//		event_base_loopexit(pep->base,NULL);
+				//	}
 					write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t);
 				}
 				return;
@@ -180,7 +186,7 @@ int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = inet_addr(st->ip);
 	sin.sin_port = htons(st->port);
-	bufferevent_setwatermark(bev,EV_READ,50,0);
+	//bufferevent_setwatermark(bev,EV_READ,50,0);
 	bufferevent_setcb(bev,eventRead,NULL,eventcb,(void *)pa);
 	bufferevent_get_enabled(bev);
 	bufferevent_enable(bev,EV_READ|EV_WRITE);
