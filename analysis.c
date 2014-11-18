@@ -43,6 +43,10 @@ void* analy_run(void *arg){
 		//printf("%d\n",h_len);
 		//fflush(stdout);
 		char *html = (char *)malloc(h_len+1);
+		if(html==NULL){
+			printf("Malloc error!\n");
+			exit(0);
+		}
 		evbuffer_remove(msg->html,html,h_len);
 		html[h_len]='\0';
 		printf("analy recv the url %s\n",msg->url);
@@ -55,7 +59,8 @@ void* analy_run(void *arg){
 		dispatch(ptp,analy,(void *)ap);
 		//analy(msg->url,html,t,sock,parm->recv);
 		evbuffer_free(msg->html);
-		free(index);
+		free(msg);
+		//nn_freemsg(msg);
 		msg=NULL;
 		index=NULL;
 	}
@@ -92,6 +97,9 @@ void analy(void *arg){
 				free(url);
 				free(html);
 				free(ap);
+				ap = NULL;
+				url = NULL;
+				html = NULL;
 				return;
 			}
 			i = j+1;
@@ -176,12 +184,15 @@ void analy(void *arg){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
-						while(nn_send(nn_sock,&outurl,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+						char *sendstr = (char *)malloc(strlen(outurl)+1);
+						strcpy(sendstr,outurl);
+						while(nn_send(nn_sock,&sendstr,sizeof(char *),NN_DONTWAIT)==EAGAIN);
 						printf("trans_write %s,%s\n",outurl,url);
 						//printf("analy write:%d\n",icc++);
 					//	printf("URL:%s\n",outurl);
 					}
 					pthread_mutex_unlock(trie_mutex);
+					free(outurl);
 				}
 				status = STATUS_0;
 			break;
@@ -276,6 +287,7 @@ void get_address(char *arg,START_POINT *sp){
 	index = baseurl;
 	index += 7;
 	sp->port = 0;
+	sp->s_add = (char *)malloc(1024);
 	int i=0;
 	while(!(*index=='/' || *index==':')){
 		sp->ip[i++]=*index++;
