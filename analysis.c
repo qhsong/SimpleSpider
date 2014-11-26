@@ -18,6 +18,7 @@
 #include<assert.h>
 #include<malloc.h>
 #include<stdlib.h>
+#include<iconv.h>
 
 #include "analysis.h"
 #include "threadpool.h"
@@ -31,11 +32,12 @@ void* analy_run(void *arg){
 	parm = (THREAD_PARM *)arg;
 	TRIE **t = parm->head;
 	int sock = parm->sock;
+	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
+	//int it,out;
 	pthread_mutex_t trie_mutex;
 	pthread_mutex_init(&trie_mutex,NULL);
-	threadpool ptp = create_threadpool(1);
+	threadpool ptp = create_threadpool(3);
 	while(1){
-	////	pthread_mutex_lock(parm->send);
 		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
 		//printf("analy_run read: %d\n",ic++);
 		msg=(URL_REQ *)(index);
@@ -50,6 +52,8 @@ void* analy_run(void *arg){
 		evbuffer_remove(msg->html,html,h_len);
 		html[h_len]='\0';
 		printf("analy recv the url %s\n",msg->url);
+
+
 		ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
 		ap->url = msg->url;
 		ap->html = html;
@@ -162,10 +166,10 @@ void analy(void *arg){
 		case STATUS_6:
 			while(html[i]==' ') i++;
 			while(1){
-				if(html[i]=='#'||html[i]=='>'){
+				if(html[i]=='>'){
 					status = STATUS_0;
 					i++;
-				}else if(html[i]=='"'){
+				}else if(html[i]=='"'||html[i]=='#'||html[i]=='?'){
 					status = STATUS_7;
 					break;
 				}else{

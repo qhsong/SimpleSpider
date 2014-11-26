@@ -24,19 +24,20 @@ void logp(int sev,const char *msg){
 	fflush(logger);
 }
 
-void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res) {
+void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port) {
 	static int count=0;
 	char *url=NULL;
 	nn_recv(sock,&url,sizeof(char *),0);
-	if(1){
-		char temp[10240];
+	if(strlen(url)<1024){
+		char temp[2048];
 		printf("write to server url:%s\n",url);
 		//printf("write_to_server read:%d\n",count++);
 		fflush(stdout);
-		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost: 127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url);
+		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url,ip,port);
 		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(res->base_url,url);
 		free(url);
+		//nn_freemsg(&url);	
 	}
 }
 
@@ -48,24 +49,26 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 		printf("Connected!\n");
 		char *url=NULL;
 		nn_recv(ep->sock,&url,sizeof(char *),0);
-		char temp[10240];
+		char temp[2048];
 		printf("write to server url:%s\n",url);
 		//printf("write_to_server read:%d\n",count++);
 		fflush(stdout);
-		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost: 127.0.0.1:80\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url);
+		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url,ep->st->ip,ep->st->port);
 		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(t->base_url,url);
-		
+		free(url);
+		//nn_freemsg(&url);	
 	}else if(events&BEV_EVENT_ERROR){
 		printf("error!,%s",evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 		bufferevent_free(bev);
 	}else if(events&BEV_EVENT_TIMEOUT){
 		printf("Timeout happend!\n");
-		write_to_server(bev,ep->sock,ep->t);
-		//printf("%s\n",temp);
+		write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
+	//	printf("%s\n",temp);
 	}else if(events&BEV_EVENT_EOF){
 		printf("connection disconnect!\n");	
 		bufferevent_free(bev);
+		bev=NULL;
 		init_bvbuff((EVENT_PARM *)ptr,bev);
 	}
 }
@@ -88,8 +91,8 @@ void eventRead(struct bufferevent *bev,void *ptr){
 	HTTP_RES *s = pep->t;	
 	//iconv_t conv= iconv_open("utf-8","GB2312");
 	//int it,iout;
-	char temp[102400];
-	int read = bufferevent_read(bev,temp,102400);
+	char temp[10240];
+	int read = bufferevent_read(bev,temp,10240);
 	int len;
 	//it = strlen(temp);
 	//iout = 102400;
@@ -150,28 +153,28 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				s->nowlength += len;
 				//printf("s->%d\n",s->nowlength);
 				if(s->nowlength >= s->clength){
-					//do sth.
-					URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
-					req->url = (char *)malloc(strlen(pep->t->base_url)+1);
-					strcpy(req->url,pep->t->base_url);
-					req->html = evbuffer_new();
-					evbuffer_add_buffer(req->html,s->html);
-					printf("eventRead write : %d\n",c++);
-					fflush(stdout);
+					fprintf(pep->wr_file,"%d .%s %d %d\n",c++,s->base_url,s->nowlength,s->http_status_code);
+					fflush(pep->wr_file);
+					if(s->http_status_code == 200){
+						URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
+						req->url = (char *)malloc(strlen(pep->t->base_url)+1);
+						strcpy(req->url,pep->t->base_url);
+						req->html = evbuffer_new();
+						evbuffer_add_buffer(req->html,s->html);
+					//printf("eventRead write : %d\n",c++);
+					//	fflush(stdout);
 					//printf("%d ",c);
 					//printf("%s %d\n",s->base_url,s->http_status_code);
 					//printf("%s",ht);
-					nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
-					fprintf(pep->wr_file,"%d %s %d %d\n",c,s->base_url,s->nowlength,s->http_status_code);
-					fflush(pep->wr_file);
+						nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
+					}
 					init_request(s);
 				//	if(c==1000){
 				//		event_base_loopexit(pep->base,NULL);
 				//	}
-					write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t);
+					write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
 				}
 				return;
-				break;
 		}
 	}
 //	printf("%s",temp);

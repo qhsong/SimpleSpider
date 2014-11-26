@@ -63,7 +63,7 @@ typedef struct http_response_s{
 typedef struct start_point_st{
 	char ip[16];
 	int port;
-	char s_add[1024];
+	char *s_add;
 }START_POINT;
 
 typedef struct connser_thread_s{
