@@ -60,7 +60,7 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 		bufferevent_free(bev);
 	}else if(events&BEV_EVENT_TIMEOUT){
 		printf("Timeout happend!\n");
-		write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
+		//write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
 	//	printf("%s\n",temp);
 	}else if(events&BEV_EVENT_EOF){
 		printf("connection disconnect!\n");	
@@ -199,8 +199,8 @@ int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
 		bufferevent_free(bev);
 		return -1;
 	}
-	struct timeval t={5,0};
-	bufferevent_set_timeouts(bev,NULL,&t);
+	//struct timeval t={5,0};
+	//bufferevent_set_timeouts(bev,NULL,NULL);
 	return 0;
 }
 
@@ -221,6 +221,7 @@ void* connserver_run(void *arg){
 	assert(sock>=0);
 	assert(nn_connect(sock,END_ADDRESS));
 	nn_setsockopt(sock,NN_PAIR,NN_RCVTIMEO,2000,sizeof(int));
+//	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	EVENT_PARM *pa = (EVENT_PARM *)malloc(sizeof(EVENT_PARM));
 	pa->t = &h;
