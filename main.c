@@ -26,6 +26,7 @@ int main(int argc, char * argv[]){
 	TRIE *head = trie_create();
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
+	nn_setsockopt(sock,NN_PAIR,NN_RCVTIMEO,2000,sizeof(int));
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	START_POINT *sp =(START_POINT *)malloc(sizeof(START_POINT));

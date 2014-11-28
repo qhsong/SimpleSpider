@@ -39,6 +39,11 @@ void* analy_run(void *arg){
 	threadpool ptp = create_threadpool(3);
 	while(1){
 		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
+		if(bytes==EAGAIN){
+			nn_close(sock);
+			destroy_threadpool(ptp);	
+			break;
+		}
 		//printf("analy_run read: %d\n",ic++);
 		msg=(URL_REQ *)(index);
 		int h_len = evbuffer_get_length(msg->html);

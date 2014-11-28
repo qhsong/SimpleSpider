@@ -24,10 +24,11 @@ void logp(int sev,const char *msg){
 	fflush(logger);
 }
 
-void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port) {
+int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port) {
 	static int count=0;
 	char *url=NULL;
-	nn_recv(sock,&url,sizeof(char *),0);
+	int s = nn_recv(sock,&url,sizeof(char *),0);
+	if(s==EAGAIN) {return -1;}
 	if(strlen(url)<1024){
 		char temp[2048];
 		printf("write to server url:%s\n",url);
@@ -39,6 +40,7 @@ void write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip
 		free(url);
 		//nn_freemsg(&url);	
 	}
+	return 0;
 }
 
 void eventcb(struct bufferevent *bev,short events,void *ptr){
@@ -47,16 +49,11 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 	EVENT_PARM *ep = (EVENT_PARM *)ptr;
 	if(events&BEV_EVENT_CONNECTED) {
 		printf("Connected!\n");
-		char *url=NULL;
-		nn_recv(ep->sock,&url,sizeof(char *),0);
-		char temp[2048];
-		printf("write to server url:%s\n",url);
-		//printf("write_to_server read:%d\n",count++);
-		fflush(stdout);
-		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url,ep->st->ip,ep->st->port);
-		bufferevent_write(bev,temp,strlen(temp));
-		strcpy(t->base_url,url);
-		free(url);
+		int s = write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
+		if(s==-1){
+			bufferevent_free(bev);
+			event_base_loopexit(ep->base,NULL);
+		}
 		//nn_freemsg(&url);	
 	}else if(events&BEV_EVENT_ERROR){
 		printf("error!,%s",evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
@@ -172,7 +169,11 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				//	if(c==1000){
 				//		event_base_loopexit(pep->base,NULL);
 				//	}
-					write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
+				int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
+		if(s==-1){
+			bufferevent_free(bev);
+			event_base_loopexit(pep->base,NULL);
+		}
 				}
 				return;
 		}
@@ -219,6 +220,7 @@ void* connserver_run(void *arg){
 	int sock=nn_socket(AF_SP,NN_PAIR);
 	assert(sock>=0);
 	assert(nn_connect(sock,END_ADDRESS));
+	nn_setsockopt(sock,NN_PAIR,NN_RCVTIMEO,2000,sizeof(int));
 
 	EVENT_PARM *pa = (EVENT_PARM *)malloc(sizeof(EVENT_PARM));
 	pa->t = &h;
@@ -235,6 +237,7 @@ void* connserver_run(void *arg){
 	event_base_loop(base,0x04);
 	event_base_free(base);
 	base=NULL;
+	nn_close(sock);
 	free(pa);
 	return NULL;
 }
