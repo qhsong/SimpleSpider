@@ -148,16 +148,19 @@ void analy(void *arg){
 			break;
 		case STATUS_4:
 			while(html[i]==' ') i++;
-			if(html[i]=='"'){
+			if(html[i]=='"' || html[i]=='\''){
+				status = STATUS_5;
+				i++;
+			}else if((html[i]>='A'&&html[i]<='Z' )|| (html[i]>='a'&& html[i]<='z' )|| (html[i]>='0'&&html[i]<='9')){
 				status = STATUS_5;
 			}else{
 				status = STATUS_0;
+				i++;
 			}
-			i++;
 			break;
 		case STATUS_5:
 			while(html[i]==' ') i++;
-			if(html[i]=='#'||html[i]=='>'||html[i]=='"'){
+			if(html[i]=='#'||html[i]=='>'||html[i]=='"'||html[i]=='\''){
 				status = STATUS_0;
 				i++;
 			}else if(!strncmp(html+i,"javascript",LEN_JAVASCRIPT)){
@@ -174,7 +177,7 @@ void analy(void *arg){
 				if(html[i]=='>'){
 					status = STATUS_0;
 					i++;
-				}else if(html[i]=='"'||html[i]=='#'||html[i]=='?'){
+				}else if(html[i]=='"'||html[i]=='#'||html[i]=='?'||html[i]=='\''){
 					status = STATUS_7;
 					break;
 				}else{
