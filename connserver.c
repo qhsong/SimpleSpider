@@ -153,7 +153,9 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				s->nowlength += len;
 				//printf("s->%d\n",s->nowlength);
 				if(s->nowlength >= s->clength){
-					fprintf(pep->wr_file,"%d %s %d %d\n",c++,s->base_url,s->nowlength,s->http_status_code);
+					pthread_mutex_lock(pep->mutex);
+					fprintf(pep->wr_file,"%d %s %d %d %d\n",(*(pep->count))++,s->base_url,s->nowlength,s->http_status_code,pep->id);
+					pthread_mutex_unlock(pep->mutex);
 					fflush(pep->wr_file);
 					if(s->http_status_code == 200){
 						URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
@@ -237,11 +239,7 @@ void* connserver_run(void *arg){
 	event_set_log_callback(logp);
 	evthread_use_pthreads();
 
-	int sock=nn_socket(AF_SP,NN_PAIR);
-	assert(sock>=0);
-	assert(nn_connect(sock,END_ADDRESS));
-	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
-	nn_setsockopt(sock,NN_PAIR,NN_RCVBUF,12500000,sizeof(int));
+	int sock = pct->sock;
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	EVENT_PARM *pa = (EVENT_PARM *)malloc(sizeof(EVENT_PARM));
@@ -251,6 +249,9 @@ void* connserver_run(void *arg){
 	pa->sock = sock;
 	pa->wr_file = pct->wr_file;
 	pa->bEvbuffer = NULL;
+	pa->mutex = pct->mutex;
+	pa->count = pct->count;
+	pa->id = pct->id;
 
 	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	

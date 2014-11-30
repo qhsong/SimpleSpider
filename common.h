@@ -69,6 +69,10 @@ typedef struct start_point_st{
 typedef struct connser_thread_s{
 	START_POINT *s;
 	FILE *wr_file;	
+	int sock;
+	int *count;
+	pthread_mutex_t *mutex;
+	int id;
 }CONNSER_THREAD;
 
 typedef struct event_parm_s{
@@ -78,6 +82,9 @@ typedef struct event_parm_s{
 	int sock;
 	FILE *wr_file;
 	struct evbuffer *bEvbuffer;
+	pthread_mutex_t *mutex;
+	int *count;
+	int id;
 }EVENT_PARM;
 
 typedef struct analy_parm_s{
