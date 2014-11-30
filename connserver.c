@@ -26,19 +26,17 @@ void logp(int sev,const char *msg){
 
 int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port) {
 	static int count=0;
-	char *url=NULL;
-	int s = nn_recv(sock,&url,sizeof(char *),0);
-	if(s==EAGAIN) {return -1;}
-	if(strlen(url)<1024){
+	void *buf=NULL;
+	int s = nn_recv(sock,&buf,NN_MSG,0);
+	if(s>=0){
 		char temp[2048];
-		printf("write to server url:%s\n",url);
+		printf("write to server url:%s\n",buf);
 		//printf("write_to_server read:%d\n",count++);
 		fflush(stdout);
-		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",url,ip,port);
+		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",buf,ip,port);
 		bufferevent_write(bev,temp,strlen(temp));
-		strcpy(res->base_url,url);
-		free(url);
-		//nn_freemsg(&url);	
+		strcpy(res->base_url,(char *)buf);
+		nn_freemsg(buf);	
 	}
 	return 0;
 }
@@ -49,11 +47,17 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 	EVENT_PARM *ep = (EVENT_PARM *)ptr;
 	if(events&BEV_EVENT_CONNECTED) {
 		printf("Connected!\n");
-		int s = write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
-		if(s==-1){
-			bufferevent_free(bev);
-			event_base_loopexit(ep->base,NULL);
-		}
+	//	if(ep->bEvbuffer!=NULL){
+	//		bufferevent_write_buffer(bev,ep->bEvbuffer);
+	//		evbuffer_free(ep->bEvbuffer);
+	//		ep->bEvbuffer = NULL;
+	//	}else{
+			int s = write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
+			if(s==-1){
+				bufferevent_free(bev);
+				event_base_loopexit(ep->base,NULL);
+			}
+	//	}
 		//nn_freemsg(&url);	
 	}else if(events&BEV_EVENT_ERROR){
 		printf("error!,%s",evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
@@ -65,7 +69,6 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 	}else if(events&BEV_EVENT_EOF){
 		printf("connection disconnect!\n");	
 		bufferevent_free(bev);
-		bev=NULL;
 		init_bvbuff((EVENT_PARM *)ptr,bev);
 	}
 }
@@ -83,7 +86,7 @@ void init_request(HTTP_RES *s){
 
 
 void eventRead(struct bufferevent *bev,void *ptr){
-	static int c=0;
+	static int c=1;
 	EVENT_PARM *pep = (EVENT_PARM *)ptr;
 	HTTP_RES *s = pep->t;	
 	//iconv_t conv= iconv_open("utf-8","GB2312");
@@ -150,7 +153,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 				s->nowlength += len;
 				//printf("s->%d\n",s->nowlength);
 				if(s->nowlength >= s->clength){
-					fprintf(pep->wr_file,"%d .%s %d %d\n",c++,s->base_url,s->nowlength,s->http_status_code);
+					fprintf(pep->wr_file,"%d %s %d %d\n",c++,s->base_url,s->nowlength,s->http_status_code);
 					fflush(pep->wr_file);
 					if(s->http_status_code == 200){
 						URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
@@ -163,17 +166,23 @@ void eventRead(struct bufferevent *bev,void *ptr){
 					//printf("%d ",c);
 					//printf("%s %d\n",s->base_url,s->http_status_code);
 					//printf("%s",ht);
-						nn_send(pep->sock,&req,sizeof(URL_REQ *),0);
+						void *buf = nn_allocmsg(sizeof(URL_REQ),0);
+						memcpy(buf,req,sizeof(URL_REQ));
+						nn_send(pep->sock,&buf,NN_MSG,0);
+						free(req);
 					}
 					init_request(s);
-				//	if(c==1000){
-				//		event_base_loopexit(pep->base,NULL);
-				//	}
-				int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
-		if(s==-1){
-			bufferevent_free(bev);
-			event_base_loopexit(pep->base,NULL);
-		}
+					if(c%101!=0){
+						//event_base_loopexit(pep->base,NULL);
+						int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
+						if(s==-1){
+						bufferevent_free(bev);
+						event_base_loopexit(pep->base,NULL);
+						}
+					}else{
+						bufferevent_free(bev);
+						init_bvbuff((EVENT_PARM *)ptr,bev);
+					}
 				}
 				return;
 		}
@@ -183,6 +192,16 @@ void eventRead(struct bufferevent *bev,void *ptr){
 }
 
 int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
+	//	struct evbuffer *bEvbuffer = bufferevent_get_input(bev);
+	//	struct evbuffer *restdata=evbuffer_new();
+		//printf("%d\n",evbuffer_get_length(bEvbuffer));
+	//	if(evbuffer_get_length(bEvbuffer)!=0){
+	//		evbuffer_add_buffer(restdata,bEvbuffer);	//copy the rest of data;
+	//		pa->bEvbuffer = restdata;
+	//	}else{
+	pa->bEvbuffer = NULL;
+	//	}
+	bev=NULL;
 	START_POINT *st = pa->st;
 	bev = bufferevent_socket_new(pa->base,-1,BEV_OPT_CLOSE_ON_FREE|BEV_OPT_THREADSAFE);
 	struct sockaddr_in sin;
@@ -201,6 +220,7 @@ int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
 	}
 	//struct timeval t={5,0};
 	//bufferevent_set_timeouts(bev,NULL,NULL);
+	printf("Next conn\n");
 	return 0;
 }
 
@@ -220,7 +240,8 @@ void* connserver_run(void *arg){
 	int sock=nn_socket(AF_SP,NN_PAIR);
 	assert(sock>=0);
 	assert(nn_connect(sock,END_ADDRESS));
-	nn_setsockopt(sock,NN_PAIR,NN_RCVTIMEO,2000,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_RCVBUF,12500000,sizeof(int));
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	EVENT_PARM *pa = (EVENT_PARM *)malloc(sizeof(EVENT_PARM));
@@ -229,6 +250,7 @@ void* connserver_run(void *arg){
 	pa->st = pct->s;
 	pa->sock = sock;
 	pa->wr_file = pct->wr_file;
+	pa->bEvbuffer = NULL;
 
 	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	

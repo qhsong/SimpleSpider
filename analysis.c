@@ -36,42 +36,42 @@ void* analy_run(void *arg){
 	//int it,out;
 	pthread_mutex_t trie_mutex;
 	pthread_mutex_init(&trie_mutex,NULL);
-	threadpool ptp = create_threadpool(3);
+	threadpool ptp = create_threadpool(1);
+	void *msgrecv=NULL;
 	while(1){
-		bytes = nn_recv(sock,&index,sizeof(URL_REQ *),0);
-		if(bytes==EAGAIN){
-			nn_close(sock);
-			destroy_threadpool(ptp);	
-			break;
-		}
-		//printf("analy_run read: %d\n",ic++);
-		msg=(URL_REQ *)(index);
-		int h_len = evbuffer_get_length(msg->html);
-		//printf("%d\n",h_len);
-		//fflush(stdout);
-		char *html = (char *)malloc(h_len+1);
-		if(html==NULL){
-			printf("Malloc error!\n");
-			exit(0);
-		}
-		evbuffer_remove(msg->html,html,h_len);
-		html[h_len]='\0';
-		printf("analy recv the url %s\n",msg->url);
+		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
+		if(bytes>=0){
+			//printf("analy_run read: %d\n",ic++);
+			msg=(URL_REQ *)msgrecv;
+			int h_len = evbuffer_get_length(msg->html);
+			//printf("%d\n",h_len);
+			//fflush(stdout);
+			char *html = (char *)malloc(h_len+1);
+			if(html==NULL){
+				printf("Malloc error!%d\n",h_len);
+				exit(0);
+			}
+			evbuffer_remove(msg->html,html,h_len);
+			html[h_len]='\0';
+			printf("analy recv the url %s\n",msg->url);
 
 
-		ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
-		ap->url = msg->url;
-		ap->html = html;
-		ap->head = t;
-		ap->nn_sock = sock;
-		ap->trie_mutex = &trie_mutex;
-		dispatch(ptp,analy,(void *)ap);
-		//analy(msg->url,html,t,sock,parm->recv);
-		evbuffer_free(msg->html);
-		free(msg);
-		//nn_freemsg(msg);
-		msg=NULL;
-		index=NULL;
+			ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
+			ap->url = msg->url;
+			ap->html = html;
+			ap->head = t;
+			ap->nn_sock = sock;
+			ap->trie_mutex = &trie_mutex;
+			dispatch(ptp,analy,(void *)ap);
+			//analy(msg->url,html,t,sock,parm->recv);
+			evbuffer_free(msg->html);
+			msg->html = NULL;
+			//free(msg);
+			//nn_freemsg(msg);
+			msg=NULL;
+			index=NULL;
+			nn_freemsg(msgrecv);
+		}
 	}
 		//free(msg->url);
 		//free(msg->html);
@@ -196,9 +196,10 @@ void analy(void *arg){
 						trie_add(head,outurl);
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
-						char *sendstr = (char *)malloc(strlen(outurl)+1);
-						strcpy(sendstr,outurl);
-						while(nn_send(nn_sock,&sendstr,sizeof(char *),NN_DONTWAIT)==EAGAIN);
+						//char *sendstr = (char *)malloc(strlen(outurl)+1);
+						void *buf = nn_allocmsg(strlen(outurl)+1,0);
+						memcpy(buf,outurl,strlen(outurl)+1);
+						nn_send(nn_sock,&buf,NN_MSG,0);
 						printf("trans_write %s,%s\n",outurl,url);
 						//printf("analy write:%d\n",icc++);
 					//	printf("URL:%s\n",outurl);

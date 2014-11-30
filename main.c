@@ -26,7 +26,8 @@ int main(int argc, char * argv[]){
 	TRIE *head = trie_create();
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
-	nn_setsockopt(sock,NN_PAIR,NN_RCVTIMEO,2000,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_RCVBUF,12500000,sizeof(int));
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	START_POINT *sp =(START_POINT *)malloc(sizeof(START_POINT));
@@ -36,9 +37,10 @@ int main(int argc, char * argv[]){
 	//printf("ip:%s|port:%d|s_add:%s",sp.ip,sp.port,sp.s_add);
 	//
 	CONNSER_THREAD s = {sp,in};	
-	char *temp = sp->s_add;
 	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
-	while(nn_send(sock,&temp,sizeof(char *),0)==EAGAIN);
+	void *msg = nn_allocmsg(strlen(sp->s_add)+1,0);
+	memcpy(msg,sp->s_add,strlen(sp->s_add)+1);
+	nn_send(sock,&msg,NN_MSG,0);
 
 	THREAD_PARM parm = {&head,NULL,NULL,sock};
 	int i;

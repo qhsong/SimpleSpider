@@ -77,6 +77,7 @@ typedef struct event_parm_s{
 	struct event_base *base; 
 	int sock;
 	FILE *wr_file;
+	struct evbuffer *bEvbuffer;
 }EVENT_PARM;
 
 typedef struct analy_parm_s{
