@@ -37,7 +37,7 @@ void* analy_run(void *arg){
 	//int it,out;
 	pthread_mutex_t trie_mutex;
 	pthread_mutex_init(&trie_mutex,NULL);
-	threadpool ptp = create_threadpool(1);
+	threadpool ptp = create_threadpool(3);
 	void *msgrecv=NULL;
 	while(1){
 		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
@@ -72,8 +72,8 @@ void* analy_run(void *arg){
 			//nn_freemsg(msg);
 			msg=NULL;
 			index=NULL;
-			nn_freemsg(msgrecv);
 		}
+			nn_freemsg(msgrecv);
 	}
 		//free(msg->url);
 		//free(msg->html);
@@ -207,6 +207,7 @@ void analy(void *arg){
 						memcpy(buf,outurl,strlen(outurl)+1);
 						nn_send(nn_sock,&buf,NN_MSG,0);
 						printf("trans_write %s,%s\n",outurl,url);
+						usleep(5000);
 						//printf("analy write:%d\n",icc++);
 					//	printf("URL:%s\n",outurl);
 					}

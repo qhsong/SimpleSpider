@@ -24,10 +24,12 @@ void logp(int sev,const char *msg){
 	fflush(logger);
 }
 
-int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port) {
+int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,int port,pthread_mutex_t *nn_mutex) {
 	static int count=0;
 	void *buf=NULL;
+	pthread_mutex_lock(nn_mutex);
 	int s = nn_recv(sock,&buf,NN_MSG,0);
+	pthread_mutex_unlock(nn_mutex);
 	if(s>=0){
 		char temp[2048];
 		printf("write to server url:%s\n",buf);
@@ -36,8 +38,8 @@ int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,
 		sprintf(temp,"GET %s HTTP/1.1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36\r\nHost:%s:%d\r\nAccept-Language: zh-CN,zh;q=0.8,en;q=0.6\r\nConnection: keep-alive\r\n\r\n",buf,ip,port);
 		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(res->base_url,(char *)buf);
-		nn_freemsg(buf);	
 	}
+		nn_freemsg(buf);	
 	return 0;
 }
 
@@ -52,7 +54,7 @@ void eventcb(struct bufferevent *bev,short events,void *ptr){
 	//		evbuffer_free(ep->bEvbuffer);
 	//		ep->bEvbuffer = NULL;
 	//	}else{
-			int s = write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port);
+			int s = write_to_server(bev,ep->sock,ep->t,ep->st->ip,ep->st->port,ep->nn_mutex);
 			if(s==-1){
 				bufferevent_free(bev);
 				event_base_loopexit(ep->base,NULL);
@@ -170,13 +172,15 @@ void eventRead(struct bufferevent *bev,void *ptr){
 					//printf("%s",ht);
 						void *buf = nn_allocmsg(sizeof(URL_REQ),0);
 						memcpy(buf,req,sizeof(URL_REQ));
+						pthread_mutex_lock(pep->send_mutex);
 						nn_send(pep->sock,&buf,NN_MSG,0);
+						pthread_mutex_unlock(pep->send_mutex);
 						free(req);
 					}
 					init_request(s);
 					if(c%101!=0){
 						//event_base_loopexit(pep->base,NULL);
-						int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port);
+						int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port,pep->nn_mutex);
 						if(s==-1){
 						bufferevent_free(bev);
 						event_base_loopexit(pep->base,NULL);
@@ -252,6 +256,8 @@ void* connserver_run(void *arg){
 	pa->mutex = pct->mutex;
 	pa->count = pct->count;
 	pa->id = pct->id;
+	pa->nn_mutex = pct->nn_mutex;
+	pa->send_mutex = pct->send_mutex;
 
 	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	

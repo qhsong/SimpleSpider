@@ -75,6 +75,8 @@ typedef struct connser_thread_s{
 	int sock;
 	int *count;
 	pthread_mutex_t *mutex;
+	pthread_mutex_t *nn_mutex;
+	pthread_mutex_t *send_mutex;
 	int id;
 }CONNSER_THREAD;
 
@@ -86,6 +88,8 @@ typedef struct event_parm_s{
 	FILE *wr_file;
 	struct evbuffer *bEvbuffer;
 	pthread_mutex_t *mutex;
+	pthread_mutex_t *nn_mutex;
+	pthread_mutex_t *send_mutex;
 	int *count;
 	int id;
 }EVENT_PARM;

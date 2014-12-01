@@ -10,7 +10,7 @@
 
 int main(int argc, char * argv[]){
 	int itemp;
-	pthread_t pt[4];
+	pthread_t pt[6];
 //	pthread_mutex_t isend,irecv;	
 //	pthread_mutex_init(&isend,NULL);
 //	pthread_mutex_init(&irecv,NULL);
@@ -28,8 +28,8 @@ int main(int argc, char * argv[]){
 	BF *bf = bloom_create();
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
-	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
-	nn_setsockopt(sock,NN_PAIR,NN_RCVBUF,12500000,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,512,sizeof(int));
+	nn_setsockopt(sock,NN_PAIR,NN_RCVBUF,512,sizeof(int));
 //	URL_REQ* url=(URL_REQ *)malloc(sizeof(URL_REQ));
 
 	START_POINT *sp =(START_POINT *)malloc(sizeof(START_POINT));
@@ -42,15 +42,20 @@ int main(int argc, char * argv[]){
 	int sock_conn=nn_socket(AF_SP,NN_PAIR);
 	assert(sock_conn>=0);
 	assert(nn_connect(sock_conn,END_ADDRESS));
-	nn_setsockopt(sock_conn,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
-	nn_setsockopt(sock_conn,NN_PAIR,NN_RCVBUF,12500000,sizeof(int));
+	nn_setsockopt(sock_conn,NN_PAIR,NN_SNDBUF,512,sizeof(int));
+	nn_setsockopt(sock_conn,NN_PAIR,NN_RCVBUF,512,sizeof(int));
 	int countpage = 0;
 	pthread_mutex_t conn_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t nn_mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-	CONNSER_THREAD s = {sp,in,sock_conn,&countpage,&conn_mutex,1};	
+
+	CONNSER_THREAD s = {sp,in,sock_conn,&countpage,&conn_mutex,&nn_mutex,&send_mutex,1};	
 	pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
-	CONNSER_THREAD s2 = {sp,in,sock_conn,&countpage,&conn_mutex,2};	
+	CONNSER_THREAD s2 = {sp,in,sock_conn,&countpage,&conn_mutex,&nn_mutex,&send_mutex,2};	
 	pthread_create(&pt[1],NULL,connserver_run,(void *)&s2);
+	CONNSER_THREAD s3 = {sp,in,sock_conn,&countpage,&conn_mutex,&nn_mutex,&send_mutex,3};	
+	pthread_create(&pt[2],NULL,connserver_run,(void *)&s3);
 	void *msg = nn_allocmsg(strlen(sp->s_add)+1,0);
 	memcpy(msg,sp->s_add,strlen(sp->s_add)+1);
 	nn_send(sock,&msg,NN_MSG,0);
@@ -58,7 +63,7 @@ int main(int argc, char * argv[]){
 	THREAD_PARM parm = {bf,NULL,NULL,sock};
 	int i;
 	for(i=0;i<THREAD_NUM;i++){
-		pthread_create(&pt[3],NULL,analy_run,&parm);	
+		pthread_create(&pt[5],NULL,analy_run,&parm);	
 	}
 	
 	//while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
