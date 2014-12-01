@@ -30,7 +30,8 @@ void* analy_run(void *arg){
 	URL_REQ *msg;
 	THREAD_PARM *parm;
 	parm = (THREAD_PARM *)arg;
-	TRIE **t = parm->head;
+//	TRIE **t = parm->head;
+	BF *bf = parm->bf;
 	int sock = parm->sock;
 	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
 	//int it,out;
@@ -59,7 +60,8 @@ void* analy_run(void *arg){
 			ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
 			ap->url = msg->url;
 			ap->html = html;
-			ap->head = t;
+			//ap->head = t;
+			ap->bf = bf;
 			ap->nn_sock = sock;
 			ap->trie_mutex = &trie_mutex;
 			dispatch(ptp,analy,(void *)ap);
@@ -84,7 +86,8 @@ void analy(void *arg){
 	ANALY_PARM *ap = (ANALY_PARM *)arg;
 	char *url = ap->url;
 	char* html = ap->html;
-	TRIE **head = ap->head;
+	//TRIE **head = ap->head;
+	BF *bf = ap->bf;
 	int nn_sock = ap->nn_sock;
 	pthread_mutex_t *trie_mutex = ap->trie_mutex;
 
@@ -94,7 +97,8 @@ void analy(void *arg){
 	char temp[1024];
 	int pos=0;
 	pthread_mutex_lock(trie_mutex);
-	trie_add(head,url);
+	//trie_add(head,url);
+	bloom_add(&bf,url);
 	pthread_mutex_unlock(trie_mutex);
 	while(html[i]){
 		switch(status) {
@@ -192,8 +196,10 @@ void analy(void *arg){
 				//trans("/a/b/index.gg","../../index.html");
 				if(outurl) { 
 					pthread_mutex_lock(trie_mutex);
-					if(!trie_check(head,outurl)){
-						trie_add(head,outurl);
+					//if(!trie_check(head,outurl)){
+					//	trie_add(head,outurl);
+					if(bloom_check(&bf,outurl)){
+						bloom_add(&bf,outurl);
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
 						//char *sendstr = (char *)malloc(strlen(outurl)+1);

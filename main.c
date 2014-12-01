@@ -6,6 +6,7 @@
 #include "connserver.h"
 #include "analysis.h"
 #include "trie.h"
+#include "bloom.h"
 
 int main(int argc, char * argv[]){
 	int itemp;
@@ -23,7 +24,8 @@ int main(int argc, char * argv[]){
 	//int sock = 0;
 	int count;
 	int bytes,totalbytes;
-	TRIE *head = trie_create();
+	//TRIE *head = trie_create();
+	BF *bf = bloom_create();
 	assert(sock >=0);
 	assert(nn_bind(sock,END_ADDRESS));
 	nn_setsockopt(sock,NN_PAIR,NN_SNDBUF,12500000,sizeof(int));
@@ -53,7 +55,7 @@ int main(int argc, char * argv[]){
 	memcpy(msg,sp->s_add,strlen(sp->s_add)+1);
 	nn_send(sock,&msg,NN_MSG,0);
 
-	THREAD_PARM parm = {&head,NULL,NULL,sock};
+	THREAD_PARM parm = {bf,NULL,NULL,sock};
 	int i;
 	for(i=0;i<THREAD_NUM;i++){
 		pthread_create(&pt[3],NULL,analy_run,&parm);	

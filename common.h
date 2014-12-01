@@ -30,6 +30,8 @@
 #include<malloc.h>
 
 
+
+#include "bloom.h"
 #include "trie.h"
 
 typedef struct url_rsp_s{
@@ -43,7 +45,8 @@ typedef struct url_req_s{
 }URL_REQ;
 
 typedef struct thread_param_s{
-	TRIE **head;
+	//TRIE **head;
+	BF *bf;
 	pthread_mutex_t *send;
 	pthread_mutex_t *recv;
 	int sock;
@@ -90,7 +93,8 @@ typedef struct event_parm_s{
 typedef struct analy_parm_s{
 	char *url;
 	char *html;
-	TRIE **head;
+	//TRIE **head;
+	BF *bf;
 	int nn_sock;
 	pthread_mutex_t *trie_mutex;
 }ANALY_PARM;
