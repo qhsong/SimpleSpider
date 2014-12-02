@@ -10,7 +10,7 @@
 
 int main(int argc, char * argv[]){
 	int itemp;
-	pthread_t pt[20];
+	pthread_t pt[40];
 //	pthread_mutex_t isend,irecv;	
 //	pthread_mutex_init(&isend,NULL);
 //	pthread_mutex_init(&irecv,NULL);
@@ -46,9 +46,11 @@ int main(int argc, char * argv[]){
 	pthread_mutex_t conn_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_t nn_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+	sem_t sem_empty;
+	sem_init(&sem_empty,0,1);
 
 
-	CONNSER_THREAD s = {sp,in,sock_conn,&countpage,&conn_mutex,&nn_mutex,&send_mutex,1};	
+	CONNSER_THREAD s = {sp,in,sock_conn,&countpage,&conn_mutex,&nn_mutex,&send_mutex,&sem_empty,1};	
 	int i=0;
 	for(i=2;i<3;i++){
 		pthread_create(&pt[0],NULL,connserver_run,(void *)&s);
@@ -58,13 +60,8 @@ int main(int argc, char * argv[]){
 	nn_send(sock,&msg,NN_MSG,0);
 
 	
-	pthread_mutex_t ana_send_mutex = PTHREAD_MUTEX_INITIALIZER;
-	pthread_mutex_t ana_recv_mutex = PTHREAD_MUTEX_INITIALIZER;
-	pthread_mutex_t ana_trie = PTHREAD_MUTEX_INITIALIZER;
-	THREAD_PARM parm = {bf,&ana_send_mutex,&ana_recv_mutex,&ana_trie,sock};
-	for(i=0;i<10;i++){
-		pthread_create(&pt[i+1],NULL,analy_run,&parm);	
-	}
+	THREAD_PARM parm = {bf,sock,&sem_empty};
+	pthread_create(&pt[i+1],NULL,analy_run,&parm);	
 	
 	//while((count=nn_send(sock,&url,sizeof(URL_REQ *),NN_DONTWAIT))==EAGAIN);
 	//pthread_mutex_unlock(&send);

@@ -91,6 +91,7 @@ void init_request(HTTP_RES *s){
 
 void eventRead(struct bufferevent *bev,void *ptr){
 	static int c=1;
+	static int c2=0;
 	EVENT_PARM *pep = (EVENT_PARM *)ptr;
 	HTTP_RES *s = pep->t;	
 	//iconv_t conv= iconv_open("utf-8","GB2312");
@@ -165,6 +166,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 					printf("%d %s %d %d\n",(*(pep->count)),s->base_url,s->nowlength,s->http_status_code);
 					pthread_mutex_unlock(pep->mutex);
 					fflush(pep->wr_file);
+					fflush(stdout);
 					
 					s->html[++s->nowlength] = '\0';
 
@@ -185,6 +187,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 						void *buf = nn_allocmsg(sizeof(URL_REQ),0);
 						memcpy(buf,req,sizeof(URL_REQ));
 						pthread_mutex_lock(pep->send_mutex);
+						sem_wait(pep->empty);
 						nn_send(pep->sock,&buf,NN_MSG,0);
 						pthread_mutex_unlock(pep->send_mutex);
 						free(req);
@@ -207,7 +210,6 @@ void eventRead(struct bufferevent *bev,void *ptr){
 }
 
 int init_bvbuff(EVENT_PARM *pa,struct bufferevent *bev){
-	//	struct evbuffer *bEvbuffer = bufferevent_get_input(bev);
 	//	struct evbuffer *restdata=evbuffer_new();
 		//printf("%d\n",evbuffer_get_length(bEvbuffer));
 	//	if(evbuffer_get_length(bEvbuffer)!=0){
@@ -267,6 +269,7 @@ void* connserver_run(void *arg){
 	pa->id = pct->id;
 	pa->nn_mutex = pct->nn_mutex;
 	pa->send_mutex = pct->send_mutex;
+	pa->empty = pct->empty;
 
 	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	

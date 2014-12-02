@@ -33,14 +33,13 @@ void* analy_run(void *arg){
 //	TRIE **t = parm->head;
 	BF *bf = parm->bf;
 	int sock = parm->sock;
+	pthread_mutex_t trie_mutex = PTHREAD_MUTEX_INITIALIZER;
 	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
 	//int it,out;
-	//threadpool ptp = create_threadpool(5);
+	threadpool ptp = create_threadpool(2);
 	void *msgrecv=NULL;
 	while(1){
-		pthread_mutex_lock(parm->recv);	
 		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
-		pthread_mutex_unlock(parm->recv);
 		if(bytes>=0){
 			//printf("analy_run read: %d\n",ic++);
 			msg=(URL_REQ *)msgrecv;
@@ -63,10 +62,10 @@ void* analy_run(void *arg){
 			//ap->head = t;
 			ap->bf = bf;
 			ap->nn_sock = sock;
-			ap->trie_mutex = parm->trie;
-			ap->send = parm->send;
-			//dispatch(ptp,analy,(void *)ap);
-			analy((void *)ap);
+			ap->trie_mutex = &trie_mutex;
+			ap->empty = parm->empty;
+			dispatch(ptp,analy,(void *)ap);
+			//analy((void *)ap);
 			//analy(msg->url,html,t,sock,parm->recv);
 			//evbuffer_free(msg->html);
 			msg->html = NULL;
@@ -102,19 +101,21 @@ void analy(void *arg){
 	//trie_add(head,url);
 	bloom_add(&bf,url);
 	pthread_mutex_unlock(trie_mutex);
-	while(html[i]){
+	while(1){
 		switch(status) {
 		case STATUS_0:
 			j = i;
 			while(html[j]!='<' && html[j]!='\0') j++;
 			if(html[j]=='\0'){
 				//pthread_mutex_unlock(mutex);
+				printf("FREE ALL%s\n",url);
 				free(url);
 				free(html);
-				free(ap);
-				ap = NULL;
 				url = NULL;
 				html = NULL;
+				sem_post(ap->empty);
+				free(ap);
+				ap = NULL;
 				return;
 			}
 			i = j+1;
@@ -202,13 +203,11 @@ void analy(void *arg){
 						bloom_add(&bf,outurl);
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
-						//char *sendstr = (char *)malloc(strlen(outurl)+1);
 						void *buf = nn_allocmsg(strlen(outurl)+1,0);
 						memcpy(buf,outurl,strlen(outurl)+1);
 						nn_send(nn_sock,&buf,NN_MSG,0);
 						printf("trans_write %s,%s\n",outurl,url);
 						//printf("analy write:%d\n",icc++);
-				//	printf("URL:%s\n",outurl);
 					}
 					pthread_mutex_unlock(trie_mutex);
 					free(outurl);

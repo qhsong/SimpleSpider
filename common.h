@@ -28,6 +28,7 @@
 #include<nanomsg/pair.h>
 #include<pthread.h>
 #include<malloc.h>
+#include<semaphore.h>
 
 
 
@@ -48,10 +49,8 @@ typedef struct url_req_s{
 typedef struct thread_param_s{
 	//TRIE **head;
 	BF *bf;
-	pthread_mutex_t *send;
-	pthread_mutex_t *recv;
-	pthread_mutex_t *trie;
 	int sock;
+	sem_t *empty;
 }THREAD_PARM;
 
 typedef struct http_response_s{
@@ -80,6 +79,8 @@ typedef struct connser_thread_s{
 	pthread_mutex_t *mutex;
 	pthread_mutex_t *nn_mutex;
 	pthread_mutex_t *send_mutex;
+
+	sem_t *empty;
 	int id;
 }CONNSER_THREAD;
 
@@ -93,6 +94,7 @@ typedef struct event_parm_s{
 	pthread_mutex_t *mutex;
 	pthread_mutex_t *nn_mutex;
 	pthread_mutex_t *send_mutex;
+	sem_t *empty;
 	int *count;
 	int id;
 }EVENT_PARM;
@@ -102,9 +104,9 @@ typedef struct analy_parm_s{
 	char *html;
 	//TRIE **head;
 	BF *bf;
-	pthread_mutex_t *send;
 	int nn_sock;
 	pthread_mutex_t *trie_mutex;
+	sem_t *empty;
 }ANALY_PARM;
 #define END_ADDRESS "inproc://spider"
 #define GLOBAL_BASE_URL "tech.qq.com"
