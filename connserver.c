@@ -39,7 +39,7 @@ int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,
 		bufferevent_write(bev,temp,strlen(temp));
 		strcpy(res->base_url,(char *)buf);
 	}
-		nn_freemsg(buf);	
+	nn_freemsg(buf);	
 	return 0;
 }
 
@@ -82,8 +82,10 @@ void init_request(HTTP_RES *s){
 	s->nowlength = 0;
 	s->ihead = 0;
 	s->http_status_code = 0;
-	if(s->html)	evbuffer_free(s->html);
-	s->html = evbuffer_new();
+	//if(s->html){	
+	//	evbuffer_free(s->html);
+	//}
+	//s->html = evbuffer_new();
 }
 
 
@@ -102,7 +104,7 @@ void eventRead(struct bufferevent *bev,void *ptr){
 	//iconv(conv,&in,&it,&out,&iout);
 	//printf("%s\n",temp);
 	int count=0;
-	while(count<=read){
+	while(count<read){
 		switch(s->status){
 			case 0:
 				if(!strncasecmp(temp+count,"HTTP/1.1",8)){
@@ -149,22 +151,32 @@ void eventRead(struct bufferevent *bev,void *ptr){
 						count++;
 					}
 				}
+				break;
 			case 3:
 				len = read-count;		
-				evbuffer_add(s->html,temp+count,len);
+				//evbuffer_add(s->html,temp+count,len);
+				strcpy(s->html+s->nowlength,temp+count);
 				s->nowlength += len;
+				count += len;
 				//printf("s->%d\n",s->nowlength);
-				if(s->nowlength >= s->clength){
+				if(s->nowlength == s->clength){
 					pthread_mutex_lock(pep->mutex);
-					fprintf(pep->wr_file,"%d %s %d %d %d\n",(*(pep->count))++,s->base_url,s->nowlength,s->http_status_code,pep->id);
+					fprintf(pep->wr_file,"%d %s %d %d\n",(*(pep->count))++,s->base_url,s->nowlength,s->http_status_code);
+					printf("%d %s %d %d\n",(*(pep->count)),s->base_url,s->nowlength,s->http_status_code);
 					pthread_mutex_unlock(pep->mutex);
 					fflush(pep->wr_file);
+					
+					s->html[++s->nowlength] = '\0';
+
 					if(s->http_status_code == 200){
 						URL_REQ *req = (URL_REQ *)malloc(sizeof(URL_REQ));
 						req->url = (char *)malloc(strlen(pep->t->base_url)+1);
 						strcpy(req->url,pep->t->base_url);
-						req->html = evbuffer_new();
-						evbuffer_add_buffer(req->html,s->html);
+						req->html = (char *)malloc(strlen(s->html)+1);
+						strcpy(req->html,s->html);
+						//req->html = evbuffer_new();
+						//evbuffer_add_buffer(req->html,s->html);
+						//evbuffer_add(req->html,s->html,strlen(s->html)+1);
 					//printf("eventRead write : %d\n",c++);
 					//	fflush(stdout);
 					//printf("%d ",c);
@@ -177,20 +189,17 @@ void eventRead(struct bufferevent *bev,void *ptr){
 						pthread_mutex_unlock(pep->send_mutex);
 						free(req);
 					}
-					init_request(s);
-					if(c%101!=0){
+					if(c++%99!=0){
 						//event_base_loopexit(pep->base,NULL);
-						int s =write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port,pep->nn_mutex);
-						if(s==-1){
-						bufferevent_free(bev);
-						event_base_loopexit(pep->base,NULL);
-						}
+						write_to_server(bev,pep->sock,((EVENT_PARM *)ptr)->t,((EVENT_PARM *)ptr)->st->ip,((EVENT_PARM *)ptr)->st->port,pep->nn_mutex);
 					}else{
+						c=1;
 						bufferevent_free(bev);
 						init_bvbuff((EVENT_PARM *)ptr,bev);
 					}
+				init_request(s);
 				}
-				return;
+				break;
 		}
 	}
 //	printf("%s",temp);
@@ -235,7 +244,7 @@ void* connserver_run(void *arg){
 	struct event_base *base;
 	struct bufferevent *bev=NULL;
 	HTTP_RES h;
-	h.html = NULL;
+	h.html = (char *)malloc(sizeof(char)*10*1024*1024);
 	init_request(&h);
 
 	logger = fopen("log.txt","w");

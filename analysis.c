@@ -35,25 +35,25 @@ void* analy_run(void *arg){
 	int sock = parm->sock;
 	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
 	//int it,out;
-	pthread_mutex_t trie_mutex;
-	pthread_mutex_init(&trie_mutex,NULL);
-	threadpool ptp = create_threadpool(3);
+	//threadpool ptp = create_threadpool(5);
 	void *msgrecv=NULL;
 	while(1){
+		pthread_mutex_lock(parm->recv);	
 		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
+		pthread_mutex_unlock(parm->recv);
 		if(bytes>=0){
 			//printf("analy_run read: %d\n",ic++);
 			msg=(URL_REQ *)msgrecv;
-			int h_len = evbuffer_get_length(msg->html);
+			//int h_len = evbuffer_get_length(msg->html);
 			//printf("%d\n",h_len);
 			//fflush(stdout);
-			char *html = (char *)malloc(h_len+1);
+			char *html = msg->html; 
 			if(html==NULL){
-				printf("Malloc error!%d\n",h_len);
+				printf("Malloc error!\n");
 				exit(0);
 			}
-			evbuffer_remove(msg->html,html,h_len);
-			html[h_len]='\0';
+			//evbuffer_remove(msg->html,html,h_len);
+			//html[h_len]='\0';
 			printf("analy recv the url %s\n",msg->url);
 
 
@@ -63,10 +63,12 @@ void* analy_run(void *arg){
 			//ap->head = t;
 			ap->bf = bf;
 			ap->nn_sock = sock;
-			ap->trie_mutex = &trie_mutex;
-			dispatch(ptp,analy,(void *)ap);
+			ap->trie_mutex = parm->trie;
+			ap->send = parm->send;
+			//dispatch(ptp,analy,(void *)ap);
+			analy((void *)ap);
 			//analy(msg->url,html,t,sock,parm->recv);
-			evbuffer_free(msg->html);
+			//evbuffer_free(msg->html);
 			msg->html = NULL;
 			//free(msg);
 			//nn_freemsg(msg);
@@ -152,19 +154,16 @@ void analy(void *arg){
 			break;
 		case STATUS_4:
 			while(html[i]==' ') i++;
-			if(html[i]=='"' || html[i]=='\''){
-				status = STATUS_5;
-				i++;
-			}else if((html[i]>='A'&&html[i]<='Z' )|| (html[i]>='a'&& html[i]<='z' )|| (html[i]>='0'&&html[i]<='9')){
+			if(html[i]=='"'){
 				status = STATUS_5;
 			}else{
 				status = STATUS_0;
-				i++;
 			}
+			i++;
 			break;
 		case STATUS_5:
 			while(html[i]==' ') i++;
-			if(html[i]=='#'||html[i]=='>'||html[i]=='"'||html[i]=='\''){
+			if(html[i]=='#'||html[i]=='>'||html[i]=='"'){
 				status = STATUS_0;
 				i++;
 			}else if(!strncmp(html+i,"javascript",LEN_JAVASCRIPT)){
@@ -181,8 +180,9 @@ void analy(void *arg){
 				if(html[i]=='>'){
 					status = STATUS_0;
 					i++;
-				}else if(html[i]=='"'||html[i]=='#'||html[i]=='?'||html[i]=='\''){
+				}else if(html[i]=='"'||html[i]=='#'||html[i]=='?'){
 					status = STATUS_7;
+					i++;
 					break;
 				}else{
 					temp[pos++] = html[i++];
@@ -198,7 +198,7 @@ void analy(void *arg){
 					pthread_mutex_lock(trie_mutex);
 					//if(!trie_check(head,outurl)){
 					//	trie_add(head,outurl);
-					if(bloom_check(&bf,outurl)){
+					if(!bloom_check(&bf,outurl)){
 						bloom_add(&bf,outurl);
 						//isendurl(outurl,nn_sock);
 					//	printf("%s %s %s\n",url,temp,outurl);
@@ -207,9 +207,8 @@ void analy(void *arg){
 						memcpy(buf,outurl,strlen(outurl)+1);
 						nn_send(nn_sock,&buf,NN_MSG,0);
 						printf("trans_write %s,%s\n",outurl,url);
-						usleep(5000);
 						//printf("analy write:%d\n",icc++);
-					//	printf("URL:%s\n",outurl);
+				//	printf("URL:%s\n",outurl);
 					}
 					pthread_mutex_unlock(trie_mutex);
 					free(outurl);

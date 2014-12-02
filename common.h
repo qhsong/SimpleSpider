@@ -41,7 +41,8 @@ typedef struct url_rsp_s{
 
 typedef struct url_req_s{
 	char *url;
-	struct evbuffer *html;
+	//struct evbuffer *html;
+	char *html;
 }URL_REQ;
 
 typedef struct thread_param_s{
@@ -49,6 +50,7 @@ typedef struct thread_param_s{
 	BF *bf;
 	pthread_mutex_t *send;
 	pthread_mutex_t *recv;
+	pthread_mutex_t *trie;
 	int sock;
 }THREAD_PARM;
 
@@ -60,7 +62,8 @@ typedef struct http_response_s{
 	int conn;
 	int ihead;
 	char base_url[1024];
-	struct evbuffer *html;
+	//struct evbuffer *html;
+	char *html;
 }HTTP_RES;
 
 typedef struct start_point_st{
@@ -99,6 +102,7 @@ typedef struct analy_parm_s{
 	char *html;
 	//TRIE **head;
 	BF *bf;
+	pthread_mutex_t *send;
 	int nn_sock;
 	pthread_mutex_t *trie_mutex;
 }ANALY_PARM;
