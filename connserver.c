@@ -9,6 +9,7 @@
 
 struct timeval s;
 FILE *logger;
+sem_t *ss_empty;
 
 void logp(int sev,const char *msg){
 	static int c= 0;
@@ -30,6 +31,7 @@ int write_to_server(struct bufferevent *bev , int sock , HTTP_RES *res,char *ip,
 	pthread_mutex_lock(nn_mutex);
 	int s = nn_recv(sock,&buf,NN_MSG,0);
 	pthread_mutex_unlock(nn_mutex);
+	sem_post(ss_empty);
 	if(s>=0){
 		char temp[2048];
 		printf("write to server url:%s\n",buf);
@@ -270,6 +272,7 @@ void* connserver_run(void *arg){
 	pa->nn_mutex = pct->nn_mutex;
 	pa->send_mutex = pct->send_mutex;
 	pa->empty = pct->empty;
+	ss_empty = pct->ss_empty;
 
 	if(init_bvbuff(pa,bev) < 0){
 		printf("Init error!\n");	

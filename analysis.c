@@ -23,6 +23,7 @@
 #include "analysis.h"
 #include "threadpool.h"
 
+
 void* analy_run(void *arg){
 	static int ic = 0;
 	char *index=NULL;
@@ -36,7 +37,7 @@ void* analy_run(void *arg){
 	pthread_mutex_t trie_mutex = PTHREAD_MUTEX_INITIALIZER;
 	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
 	//int it,out;
-	threadpool ptp = create_threadpool(2);
+	threadpool ptp = create_threadpool(30);
 	void *msgrecv=NULL;
 	while(1){
 		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
@@ -64,6 +65,7 @@ void* analy_run(void *arg){
 			ap->nn_sock = sock;
 			ap->trie_mutex = &trie_mutex;
 			ap->empty = parm->empty;
+			ap->ss_empty = parm->ss_empty;
 			dispatch(ptp,analy,(void *)ap);
 			//analy((void *)ap);
 			//analy(msg->url,html,t,sock,parm->recv);
@@ -205,7 +207,10 @@ void analy(void *arg){
 					//	printf("%s %s %s\n",url,temp,outurl);
 						void *buf = nn_allocmsg(strlen(outurl)+1,0);
 						memcpy(buf,outurl,strlen(outurl)+1);
+						sem_wait(ap->ss_empty);
+						
 						nn_send(nn_sock,&buf,NN_MSG,0);
+						usleep(300000);
 						printf("trans_write %s,%s\n",outurl,url);
 						//printf("analy write:%d\n",icc++);
 					}

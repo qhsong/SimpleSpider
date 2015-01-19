@@ -51,6 +51,7 @@ typedef struct thread_param_s{
 	BF *bf;
 	int sock;
 	sem_t *empty;
+	sem_t *ss_empty;
 }THREAD_PARM;
 
 typedef struct http_response_s{
@@ -81,6 +82,7 @@ typedef struct connser_thread_s{
 	pthread_mutex_t *send_mutex;
 
 	sem_t *empty;
+	sem_t *ss_empty;
 	int id;
 }CONNSER_THREAD;
 
@@ -95,6 +97,7 @@ typedef struct event_parm_s{
 	pthread_mutex_t *nn_mutex;
 	pthread_mutex_t *send_mutex;
 	sem_t *empty;
+	sem_t *ss_empty;
 	int *count;
 	int id;
 }EVENT_PARM;
@@ -107,8 +110,10 @@ typedef struct analy_parm_s{
 	int nn_sock;
 	pthread_mutex_t *trie_mutex;
 	sem_t *empty;
+	sem_t *ss_empty;
 }ANALY_PARM;
-#define END_ADDRESS "inproc://spider"
+#define LISTEN_ADDRESS "tcp://*:5800"
+#define CONNECT_ADDRESS "tcp://127.0.0.1:5800"
 #define GLOBAL_BASE_URL "tech.qq.com"
 #define LEN_GLOBAL_BASE_URL 11
 #define THREAD_NUM 1
