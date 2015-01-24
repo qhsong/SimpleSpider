@@ -48,7 +48,7 @@ int main(int argc, char * argv[]){
 	pthread_mutex_t nn_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
 	sem_t sem_empty;
-	sem_init(&sem_empty,0,100);
+	sem_init(&sem_empty,0,100000);
 	sem_t sem_url_empty;
 	sem_init(&sem_url_empty,1,200000);
 

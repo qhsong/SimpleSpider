@@ -29,9 +29,9 @@
 #include<pthread.h>
 #include<malloc.h>
 #include<semaphore.h>
+#include<nanomsg/nn.h>
 
-
-
+#include "queuetype.h"
 #include "bloom.h"
 #include "trie.h"
 
@@ -42,8 +42,8 @@ typedef struct url_rsp_s{
 
 typedef struct url_req_s{
 	char *url;
-	//struct evbuffer *html;
-	char *html;
+	struct evbuffer *html;
+	//char *html;
 }URL_REQ;
 
 typedef struct thread_param_s{
@@ -62,8 +62,8 @@ typedef struct http_response_s{
 	int conn;
 	int ihead;
 	char base_url[1024];
-	//struct evbuffer *html;
-	char *html;
+	struct evbuffer *html;
+	//char *html;
 }HTTP_RES;
 
 typedef struct start_point_st{
@@ -111,7 +111,10 @@ typedef struct analy_parm_s{
 	pthread_mutex_t *trie_mutex;
 	sem_t *empty;
 	sem_t *ss_empty;
+	QueueType *qu;
 }ANALY_PARM;
+
+
 #define LISTEN_ADDRESS "tcp://*:5800"
 #define CONNECT_ADDRESS "tcp://127.0.0.1:5800"
 #define GLOBAL_BASE_URL "tech.qq.com"

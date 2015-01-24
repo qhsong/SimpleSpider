@@ -22,6 +22,7 @@
 
 #include "analysis.h"
 #include "threadpool.h"
+#include "common.h"
 
 
 void* analy_run(void *arg){
@@ -35,26 +36,28 @@ void* analy_run(void *arg){
 	BF *bf = parm->bf;
 	int sock = parm->sock;
 	pthread_mutex_t trie_mutex = PTHREAD_MUTEX_INITIALIZER;
+	QueueType *qu=(QueueType *)malloc(sizeof(QueueType));
+	initQueue(qu,500000);
 	//iconv_t conv = iconv_open("utf-8i//IGNORE","GB2312");
 	//int it,out;
-	threadpool ptp = create_threadpool(30);
+	threadpool ptp = create_threadpool(1);
 	void *msgrecv=NULL;
 	while(1){
 		bytes = nn_recv(sock,&msgrecv,NN_MSG,0);
 		if(bytes>=0){
 			//printf("analy_run read: %d\n",ic++);
 			msg=(URL_REQ *)msgrecv;
-			//int h_len = evbuffer_get_length(msg->html);
+			int h_len = evbuffer_get_length(msg->html);
 			//printf("%d\n",h_len);
 			//fflush(stdout);
-			char *html = msg->html; 
+			char *html = (char *)malloc(sizeof(char) * (h_len + 1)); 
 			if(html==NULL){
 				printf("Malloc error!\n");
 				exit(0);
 			}
-			//evbuffer_remove(msg->html,html,h_len);
-			//html[h_len]='\0';
-			printf("analy recv the url %s\n",msg->url);
+			evbuffer_remove(msg->html,html,h_len);
+			html[h_len]='\0';
+			printf("analy recv the url %s %d\n",msg->url,h_len);
 
 
 			ANALY_PARM *ap=(ANALY_PARM *)malloc(sizeof(ANALY_PARM ));
@@ -66,11 +69,12 @@ void* analy_run(void *arg){
 			ap->trie_mutex = &trie_mutex;
 			ap->empty = parm->empty;
 			ap->ss_empty = parm->ss_empty;
+			ap->qu = qu;
 			dispatch(ptp,analy,(void *)ap);
 			//analy((void *)ap);
 			//analy(msg->url,html,t,sock,parm->recv);
-			//evbuffer_free(msg->html);
-			msg->html = NULL;
+			evbuffer_free(msg->html);
+			//msg->html = NULL;
 			//free(msg);
 			//nn_freemsg(msg);
 			msg=NULL;
@@ -97,7 +101,7 @@ void analy(void *arg){
 	char *outurl;
 	int status = STATUS_0;
 	int i = 0,j = 0;
-	char temp[1024];
+	char temp[102400];
 	int pos=0;
 	pthread_mutex_lock(trie_mutex);
 	//trie_add(head,url);
@@ -110,7 +114,6 @@ void analy(void *arg){
 			while(html[j]!='<' && html[j]!='\0') j++;
 			if(html[j]=='\0'){
 				//pthread_mutex_unlock(mutex);
-				printf("FREE ALL%s\n",url);
 				free(url);
 				free(html);
 				url = NULL;
@@ -169,7 +172,7 @@ void analy(void *arg){
 			if(html[i]=='#'||html[i]=='>'||html[i]=='"'){
 				status = STATUS_0;
 				i++;
-			}else if(!strncmp(html+i,"javascript",LEN_JAVASCRIPT)){
+			}else if(!strncmp(html+i,"javascript",LEN_JAVASCRIPT) || !strncmp(html+i , "https",5)){	//not https
 				status = STATUS_0;
 			}else{
 				pos=0;
@@ -208,10 +211,26 @@ void analy(void *arg){
 						void *buf = nn_allocmsg(strlen(outurl)+1,0);
 						memcpy(buf,outurl,strlen(outurl)+1);
 						sem_wait(ap->ss_empty);
-						
-						nn_send(nn_sock,&buf,NN_MSG,0);
-						usleep(300000);
-						printf("trans_write %s,%s\n",outurl,url);
+						int sendback = nn_send(nn_sock,&buf,NN_MSG,NN_DONTWAIT);
+						if(sendback < 0){
+							//printf("%s send failed!,error is :%s,errno is %d %d",outurl,nn_strerror(nn_errno()),nn_errno(),EAGAIN);
+							enter(ap->qu,buf);
+							printf("%s is enter the qu|length is %d\n",outurl,ap->qu->length);
+						}else{
+							int icount=0;
+							while(ap->qu->length != 0 && sendback > 0 && icount!=300 ){
+								buf = dequeue(ap->qu); 
+								sendback = nn_send(nn_sock,&buf,NN_MSG,NN_DONTWAIT);
+								icount++;
+								printf("send %s,%d|length:%d\n",(char *)buf,sendback,ap->qu->length);
+							}
+							if(sendback < 0) {
+								enter(ap->qu,buf);
+								printf("re queue:%s|length:%d\n",(char*)buf,ap->qu->length);
+							}
+						}
+						printf("trans_write %s,%s|%d\n",outurl,url,sendback);
+						fflush(stdout);
 						//printf("analy write:%d\n",icc++);
 					}
 					pthread_mutex_unlock(trie_mutex);
