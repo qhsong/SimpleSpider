@@ -42,6 +42,47 @@ HTTP包的请求地址中是不能含有相对链接的，而且使用相对链�
 ####3、URL地址的去重
 为了避免重复的抓取相同的URL地址，在本程序中URL去重。在本次实验中，使用的是实验一大规模字符串查找中的TRIE树来进行查重。在使用TRIE树的时候，需要注意进行线程的同步。由于上一个实验的代码是单线程的程序，所以TRIE树的插入、查找的操作也是单线程的。所以在使用时需要用pthread_mutex_t来进行线程间的同步与互斥操作。
 
-###3、消息队列
+####3、消息队列
 消息队列采用的是Nanomsg库，这是一个使用C语言编写的一个消息队列，可以轻松完成跨线程、跨进程、跨机器的通讯。Nanomsg的通讯模式有NN_PAIR、NN_REPREQ、NN_PIPELINE等通讯模型。本程序采用的通讯模型主要是NN_PAIR的通讯模型，进行一对一的通讯。考虑到程序是在同一个进程内运行，所以我们主要以传递指针为主。下图所示的就是两个进程通讯之间传递的数据类型：
+![](https://github.com/qhsong/SimpleSpider/blob/master/pic/nanomsg.jpg)
+Nanomsg中可以实现“零拷贝”，Send端采用：
+```C
+void *msg = nn_allocmsg(3, 0);
+strncpy(msg, "ABC", 3);
+nbytes = nn_send (s, &msg, NN_MSG, 0);
+assert (nbytes == 3);
+```
+发送端采用
+```C
+void *buf = NULL;
+nbytes = nn_recv (s, &buf, NN_MSG, 0);
+
+if (nbytes < 0) {
+	/* handle error */
+	 ...
+}
+else {
+	 /* process message */
+	...
+	nn_freemsg (buf);
+}
+```
+这样的代码就能实现“零拷贝”。详见http://nanomsg.org/v0.4/nn_recv.3.html http://nanomsg.org/v0.4/nn_send.3.html
+
+####4、线程池
+进程池线程主要采用的是threadpool.c和threadpool.h这两个文件。其中，create_threadpool函数新建了一个线程池，并将线程池进行初始化操作。在实际需要调用线程的时候，只需要使用dispatch函数，将要调用的函数指针、参数传递进去。线程池会自动给你调用执行并回收资源。通过线程池可以很好的控制分析线程运行的个数，做到按需来分配线程，避免了因频繁生成和销毁线程造成的线程开销。
+
+四、结果
+-------
+经过多次运行,该程序总共分析出了363651个链接地址，有效链接地址为157396个网页。
+
+五、TODOLIST
+[x] 实现了简单的爬虫能够爬去
+[ ] 传输时加入zlib压缩
+[ ] 更好的http页面分析
+[ ] 加入IPv6支持，兼容IPv4和IPv6
+[ ] 修改Http包头分析，使用一些Bufferevents的新函数
+[ ] 考虑加入一个管理线程，进行
+[ ] 引入正文提取
+[ ] 使用Nanomsg，引入分布式,将线程分开
 
