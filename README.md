@@ -30,3 +30,8 @@ HTTP包头的keep-alive能够保证在每一次传输完成后保持连接可以
 在处理HTTP连接时，需要进行HTTP包头的分析。HTTP包头的处理也是一个状态机，其状态机的转换如下所示。在分析HTTP包头时，对于目前的爬虫，仅仅需要得到HTTP状态和content-length的值。所以目前的HTTP包头分析比较简单。
 ![](https://github.com/qhsong/SimpleSpider/blob/master/pic/HttpHeaderAnalysis.jpg)
 
+###2、分析线程
+分析线程将接收到的HTML语言，使用状态机的方法分析HTML中出现的链接，将外站的连接去除，只留下本地链接，并将本地链接中含有相对路径的部分转换成为绝对地址链接。
+####1、HTML链接提取
+HTML链接中的URL主要放在<a>标签中的href属性中，我们采用的状态机的方式提取出标签中的URL。分析时也需要去除href=”#”、href=”javascript::void(0)”等这样的无效链接，对于href=”a.html#a1”这样的锚点链接，我们要将后面的锚点去掉，只留下a.html。这样在去重的时候，能够保证不将a.html#a1和a.html#a2视为两个链接。本程序使用的状态机如下所示。
+
