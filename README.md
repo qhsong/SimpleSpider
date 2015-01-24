@@ -15,4 +15,18 @@ SimpleSpider
 二、架构设计
 --------
 本系统整体架构如下所示，由主线程、抓取线程、分析分配线程和分析线程五类线程组成。线程间的通信主要使用一个轻量级消息队列Nanomsg来进行。主线程主要负责抓取线程和分析分配线程的创建。抓取线程主要负责网页的Socket的抓取，并将得到的网页内容放到队列中。分析分配线程主要负责从消息队列中提取得到的网页内容，并将其分配到分析进程的进程池中对应的线程进行计算。分析线程主要负责从得到网页内容中解析出地址并放到消息队列中。
+![](https://github.com/qhsong/SimpleSpider/blob/master/pic/architecture.jpg)
+
+三、核心线程的设计
+-----
+###1、网页抓取线程
+网页抓取线程主要是负责的是网页的socket抓取，并且将抓取的内容放到nanomsg中。网页抓取线程采用的是Libevent库来进行网络的连接和抓取，Libevent库是一个基于Reactor模型的一个网络库，支持异步的调用函数。只需在初始化的时候在相应时间上一个函数，程序就会在该事件发生时调用对应的函数库。
+####1.Bufferevents和Evbuffer
+Libevent在event事件调用的基础上，又在之上封装了一个Bufferevents，主要用于面向流的通讯，其类似Java的输入输出流，通过指定IP地址和端口，就能直接进行读写。在Bufferevents中封装了两个Evbuffer类型的指针，一个是input，另外一个是output。Evbuffer类型主要用于存储字符串内容，是一个能够用在网络编程的缓冲区，类似C++中的String类型。只要一次定义，可以无限的进行读取和写入而不用担心缓冲区溢出的问题。但是在bufferevent中，每次读取的字节数只能是4096个字节。对于大量的数据，这个缓冲区大小是比较小的，这个可以通过调整源码进行修改。
+####2.HTTP的keep-alive
+HTTP包头的keep-alive能够保证在每一次传输完成后保持连接可以继续下一次的数据传递，这样可以大大节省每次打开和关闭TCP连接的时间开销。但是keep-alive并不是无限次的，不同的HTTP服务器默认对keep-alive的请求次数和超时时间的设置是不一样的。Apache默认的keep-alive请求次数是100次，超时时间是5s。Nginx默认的请求次数也是100次，但是超时时间是75s。
+在请求HTTP包的时候，其请求顺序是发送一个HTTP请求包，HTTP服务器就会返回相应的请求页面，待当前页面发送完成后，再接收下一个HTTP请求包。而不是能够一直接受HTTP请求包。
+####3.HTTP包头分析
+在处理HTTP连接时，需要进行HTTP包头的分析。HTTP包头的处理也是一个状态机，其状态机的转换如下所示。在分析HTTP包头时，对于目前的爬虫，仅仅需要得到HTTP状态和content-length的值。所以目前的HTTP包头分析比较简单。
+![](https://github.com/qhsong/SimpleSpider/blob/master/pic/HttpHeaderAnalysis.jpg)
 
